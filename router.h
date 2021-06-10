@@ -4,6 +4,7 @@
 #include "space.h"
 #include "net.h"
 #include "parser.h"
+#include "config.h"
 
 namespace rt {
 
@@ -14,8 +15,9 @@ private:
   Space space;
 
 public:
+  Router() = delete;
   Router(db::Chip &chip);
-  void run();
+  void run(cf::Config);
   void print(FILE *f);
   ~Router();
 };

@@ -39,9 +39,11 @@ private:
   std::vector<db::Blockage> _getBlockagesFromCell(const db::CellIns &cell);
   void _addBlockage2Cell(const T3 &b, const db::Blockage &blockage);
   void _addNet2Cell(const T3 &b, const std::string &netName);
+
+  void _addDemandOnGrid(const T3 &b, int delta = 1);
   
 public:
-  Space() = default;
+  Space() = delete;
   // build a space with given chip
   Space(db::Chip &chip);
 

@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "parser.h"
+#include "config.h"
 
 #include <vector>
 #include <array>
@@ -24,7 +25,14 @@ struct Node {
     if (link.find(edgeIdx) != link.end())
       link.insert(edgeIdx);
   }
+  void removeLink(int edgeIdx) {
+    link.erase(edgeIdx);
+  }
+  operator T3 () const {
+    return T3{x, y, z};
+  }
 };
+
 
 struct Edge {
   // id1 < id2
@@ -32,6 +40,9 @@ struct Edge {
   Edge() {}
   Edge(int id1, int id2)
     :id1(id1), id2(id2) {}
+  operator std::pair<int, int> () const {
+    return std::make_pair(id1, id2);
+  }
 };
 
 
@@ -64,12 +75,23 @@ private:
   bool _occupy(const T3 &b) { 
     return occupied.find(b) != occupied.end(); 
   }
+
+
+  void _removeNode(int x);
+  void _removeEdge(int edgeID);
+  int _addNode(const T3 &cord);
+  int _addEdge(int a, int b);
   int _getNodeIdx(const T3 &cord);
   int _getEdgeIdx(int a, int b); 
   std::vector<T3> _getNetPins();
 
-  void _graph2Tree();
-  void _cutLeaves();
+  int _getCenter();
+
+  void _optimize();
+  void _checkLegality();
+
+  void _aStarRoute(cf::Config &config);
+  void _simpleRoute(cf::Config &config);
 
 public:
 
@@ -89,6 +111,11 @@ public:
   const std::map<T3, int> & getOccupiedCells() {
     return occupied;
   }
+
+  void cleanAll();
+  void modifyCells();
+  void route(cf::Config &config);
+  void reroute(cf::Config &config);
 };
 
 } // namespace rt
