@@ -215,7 +215,176 @@ void Net::modifyCells() {
   routes.clear();
 }
 
+void Net::_simpleRoute2Pins(const T3 &a, const T3 &b) {
+
+}
+
 void Net::_simpleRoute(cf::Config &config) {
+  std::vector<T3> pins(_getNetPins());
+  std::map<T2, std::vector<int>> loc2RNode;
+  std::map<int, T3> routeNodes;
+  std::map<T2, int> loc2ID;
+  std::map<int, T2> id2Loc;
+  std::vector<std::set<int>> locEdges;
+
+  int numRNodes = 0;
+  int numLocs = 0;
+
+  // flute
+  int degree = pins.size();
+  int xs[100 * degree];
+  int ys[100 * degree];
+  int pt_cnt = 0;
+  int node_cnt = 0;
+  
+  auto addNode = [&](int x, int y, int z) {
+    routeNodes[numNodes] = {x, y, z};
+    return numNodes++;
+  };
+
+  auto addLoc2Node = [&](int x, int y, int id) {
+    auto ptr = loc2RNode.find({x, y});
+    if (ptr == loc2RNode.end())
+      loc2RNode[{x, y}] = std::vector<int>();
+    loc2RNode[{x, y}].push_back(id);
+  };
+
+  auto addLoc = [&](int x, int y) {
+    auto ptr = loc2ID.find({x, y});
+    if (ptr != loc2ID.end()) {
+      loc2ID[{x, y}] = numLocs;
+      id2Loc[numLocs++] = {x, y};
+    }
+    return loc2ID[{x, y}]; 
+  };
+
+  auto isNewLoc = [&](int x, int y) {
+    auto ptr = loc2ID.find({x, y});
+    return ptr == loc2ID.end();
+  };
+
+  auto append = [&](int x) {
+    while (locEdges.size() <= x)
+      locEdges.push_back(std::set<int>());
+  }; 
+
+  auto addEdge = [&](std::tuple<int, int> a, std::tuple<int, int> b) {
+    int x1{std::get<0>(a)}, y1{std::get<1>(a)};
+    int x2{std::get<0>(b)}, y2{std::get<1>(b)};
+    int loc1{loc2ID[{x1, y1}]}, loc2{loc2ID[{x2, y2}]};
+
+    if (loc1 != loc2) {
+      append(loc1);
+      append(loc2);
+      locEdges[loc1].insert(loc2);
+      locEdges[loc2].insert(loc1);
+    }
+  };
+
+  auto changeRNodeZ = [&](int id, int z) {
+    auto t3 = routeNodes[id];
+    routeNodes[id] = T3{t3[0], t3[1], z};
+  };
+
+  for (auto pin : pins) {
+    xs[pt_cnt] = pin[0]; 
+    ys[pt_cnt] = pin[1];
+    pt_cnt += 1;
+    int id {addNode(pin[0], pin[1], pin[2])};
+    addLoc(pin[0], pin[1]);
+    addLoc2Node(pin[0], pin[1], id);
+  }
+
+  assert(degree >= 2 && "#pin of a net >= 2");
+
+  Tree fluteTree = flute(degree, xs, ys, ACCURACY);
+  for (int i = 0; i < degree * 2 - 2; i++) {
+    Branch &branch1 = fluteTree.branch[i];
+    Branch &branch2 = fluteTree.branch[branch1.n];
+
+    std::tuple<int, int> fluteEdge[2] {
+      std::make_tuple(branch1.x, branch1.y),
+      std::make_tuple(branch2.x, branch2.y)
+    };
+    
+    for (int j = 0; j < 2; j++) {
+      std::tuple<int, int> &nodeLoc = fluteEdge[j];
+      int x{std::get<0>(nodeLoc)}, y{std::get<1>(nodeLoc)};
+      bool isINode = isNewLoc(x, y);
+      if (isINode) {
+        int loc = addLoc(x, y);
+        int id = addNode(x, y, -1);
+        addLoc2Node(x, y, id);
+      }
+    }
+
+    addEdge(fluteEdge[0], fluteEdge[1]);
+  }
+
+  bool someChange = true;
+  while (someChange) {
+    someChange = false;
+    for (int i = 0; i < numLocs; i++) {
+      auto t2 = id2Loc[i];
+      if (loc2RNode[t2].size() == 1) {
+        auto id = loc2RNode[t2][0];
+        auto rnode = routeNodes[id];
+        if (rnode[2] == -1) {
+          std::vector<int> layers;
+          for (auto y : locEdges[i]) 
+            if (y > i) {
+              auto t2_ = id2Loc[y];
+              for (auto nodeid : loc2RNode[t2_]) {
+                auto rnode_ = routeNodes[nodeid];
+                if (rnode_[2] != -1)
+                  layers.push_back(rnode_[2]);
+              }
+            }
+          if (layers.size() == 0)
+            continue;
+
+          int layer = *std::max_element(layers.begin(), layers.end());
+          changeRNodeZ(id, layer);
+          someChange = true;
+        }
+      }
+    }
+  }
+
+  for (auto entry : routeNodes) 
+    _addNode(entry.second);
+  
+  for (auto pin : pins) {
+    int id {_getNodeIdx({pin[0], pin[1], pin[2]})};
+    nodes[id].isPin = 1;
+  }
+
+  std::vector<int> highest;
+  for (int i = 0; i < numLocs; i++) {
+    auto t2 = id2Loc[i];
+    std::vector<int> layers;
+    for (auto id : loc2RNode[t2]) {
+      auto rnode = routeNodes[id];
+      layers.push_back(rnode[2]);
+    }
+    std::sort(layers.begin(), layers.end(),
+      [](int a, int b) { return a > b; });
+    
+    for (int i = 0; i + 1 < layers.size(); i++)
+      _simpleRoute2Pins(T3{t2.first, t2.second, layers[i]}, 
+                        T3{t2.first, t2.second, layers[i+1]});
+    highest.push_back(layers[0]);
+  }
+
+  for (int i = 0; i < numLocs; i++) {
+    auto t2 = id2Loc[i];
+    for (auto y : locEdges[i])
+      if (y > i) {
+        auto t2_ = id2Loc[y];
+        _simpleRoute2Pins(T3{t2.first, t2.second, highest[i]}, 
+                          T3{t2_.first, t2_.second, highest[y]});
+      }
+  }
 
 }
 
