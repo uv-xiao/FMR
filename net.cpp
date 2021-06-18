@@ -215,7 +215,16 @@ void Net::modifyCells() {
   routes.clear();
 }
 
-void Net::_simpleRoute2Pins(const T3 &a, const T3 &b) {
+/*
+ * (1, 0, 0) : 0 , (-1, 0, 0) : 1
+ * (0, 1, 0) : 2 , (0, -1, 0) : 3
+ * (0, 0, 1) : 4 , (0, 0, -1) : 5
+ */
+void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
+  // static const int dx[6] = {1, -1, 0, 0, 0, 0},
+  //                  dy[6] = {};
+  std::vector<T3> candidates;
+
 
 }
 

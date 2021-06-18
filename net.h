@@ -96,7 +96,7 @@ private:
   void _optimize();
   void _checkLegality();
 
-  void _simpleRoute2Pins(const T3 &a, const T3 &b);
+  void _simpleRoute2Pins(const T3 a, const T3 b, const int lastDir = -1);
   void _simpleRoute(cf::Config &config);
   
   void _aStarRoute2Pins(const T3 &a, const T3 &b);
