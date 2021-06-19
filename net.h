@@ -55,6 +55,8 @@ struct Edge {
 class Net {
 private:
 
+  const double violationCost = 1e7;
+  
   // A Net must be in a space;
   Space &space;
   
@@ -96,6 +98,7 @@ private:
   void _optimize();
   void _checkLegality();
 
+  double _estCost(const T3 a);
   void _simpleRoute2Pins(const T3 a, const T3 b, const int lastDir = -1);
   void _simpleRoute(cf::Config &config);
   

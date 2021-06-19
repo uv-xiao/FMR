@@ -215,17 +215,111 @@ void Net::modifyCells() {
   routes.clear();
 }
 
+
+double Net::_estCost(const T3 a) {
+  // TODO: design better
+  double ret = 0;
+  auto congestionFunc = [](int supply, int demand) {
+    return (double)supply / (supply - demand);
+  };
+
+  if (_occupy(a)) {
+    ret += basics.weight * space.chip.layers[a[2]].powerFactor;
+    int demand = space._getDemandOnGrid(a);
+    int supply = space._getSupplyOnGrid(a);
+    if (demand == supply) ret += violationCost;
+    else {
+      ret += congestionFunc(supply, demand);
+    }
+  }
+
+  return ret;
+}
+
 /*
  * (1, 0, 0) : 0 , (-1, 0, 0) : 1
  * (0, 1, 0) : 2 , (0, -1, 0) : 3
  * (0, 0, 1) : 4 , (0, 0, -1) : 5
  */
 void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
-  // static const int dx[6] = {1, -1, 0, 0, 0, 0},
-  //                  dy[6] = {};
-  std::vector<T3> candidates;
 
 
+  static const int dx[6] = {1, -1, 0, 0, 0, 0},
+                   dy[6] = {0, 0, 1, -1, 0, 0},
+                   dz[6] = {0, 0, 0, 0, 1, -1};
+
+  auto move = [&](const T3 a, int k) {
+    return T3{a[0] + dx[k], a[1] + dy[k], a[2] + dz[k]};
+  };
+  int oppDir = lastDir ^ 1;
+
+  int ida{_addNode(a)};
+  if (lastDir != -1) {
+    int idLast{_getNodeIdx(move(a, oppDir))};
+    _addEdge(idLast, ida);
+  }
+
+  if (a == b) return;
+
+  std::vector<int> better, worse;
+
+  auto prepareCandidate = [&](int k) {
+    if (a[k] < b[k]) {
+      if (k * 2 != oppDir)
+        better.push_back(k * 2);
+      if (k * 2 + 1!= oppDir)
+        worse.push_back(k * 2 + 1);  
+    }
+    else if (a[k] > b[k]) {
+      if (k * 2 + 1 != oppDir)
+        better.push_back(k * 2 + 1);
+      if (k * 2 != oppDir)
+        worse.push_back(k * 2);
+    }
+    else {
+      if (k * 2  != oppDir)
+        worse.push_back(k * 2);
+      if (k * 2 + 1 != oppDir)
+        worse.push_back(k * 2 + 1);
+    }
+  };
+
+  for (int i = 0; i < 3; i++)
+    prepareCandidate(i);
+  
+
+  std::vector< std::pair<int, double> > toSort;
+  std::pair<int, double> bestInBetter, bestInWorse;
+
+  // First, try candidates in better
+  for (auto x : better) {
+    toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+  }
+  std::sort(toSort.begin(), toSort.end(), 
+    [&](const T2 &a, const T2 &b) {
+      return a.second < b.second;
+    }); 
+  bestInBetter = toSort[0];
+
+  if (bestInBetter.second < violationCost) {
+    _simpleRoute2Pins(move(a, bestInBetter.first), b, bestInBetter.first);
+  }
+  else {
+    toSort.clear();
+    for (auto x : worse) {
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+    }  
+    std::sort(toSort.begin(), toSort.end(), 
+      [&](const T2 &a, const T2 &b) {
+        return a.second < b.second;
+      });
+    bestInWorse = toSort[0];
+
+    assert(bestInWorse.second < violationCost 
+        && "at least one available direction");
+    
+    _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
+  }
 }
 
 void Net::_simpleRoute(cf::Config &config) {
@@ -398,7 +492,7 @@ void Net::_simpleRoute(cf::Config &config) {
 }
 
 void Net::_aStarRoute(cf::Config &config) {
-
+// Not implemented
 }
 
 void Net::route(cf::Config &config) {

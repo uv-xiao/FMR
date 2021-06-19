@@ -41,6 +41,8 @@ private:
   void _addNet2Cell(const T3 &b, const std::string &netName);
 
   void _addDemandOnGrid(const T3 &b, int delta = 1);
+  int _getDemandOnGrid(const T3 &b);
+  int _getSupplyOnGrid(const T3 &b);
   
 public:
   Space() = delete;
