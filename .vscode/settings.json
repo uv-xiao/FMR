@@ -53,6 +53,13 @@
     "new": "cpp",
     "stdexcept": "cpp",
     "cinttypes": "cpp",
-    "typeinfo": "cpp"
+    "typeinfo": "cpp",
+    "hash_map": "cpp",
+    "hash_set": "cpp",
+    "condition_variable": "cpp",
+    "list": "cpp",
+    "unordered_set": "cpp",
+    "mutex": "cpp",
+    "thread": "cpp"
   }
 }

@@ -5,11 +5,9 @@
 #include <vector>
 #include <set>
 #include <map>
+#include "types.h"
 
 namespace db {
-
-using T3 = std::tuple<int, int, int>;
-#define M3(a, b, c) std::make_tuple(a, b, c)
 
 enum direct {H, V};
 
@@ -121,7 +119,7 @@ struct Chip {
 // Non-default supply
   int numNonDefaultSupplyGGrid = 0;
   std::vector<NonDefaultSupplyGGrid> nonDefaultSupplyGrids;
-  std::map<T3, int> pos2SupplyDelta;
+  std::map<rt::T3, int> pos2SupplyDelta;
 
 // Master cells
   int numMasterCell;

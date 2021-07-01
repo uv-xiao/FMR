@@ -358,7 +358,7 @@ void Net::_simpleRoute(cf::Config &config) {
       loc2ID[{x, y}] = numLocs;
       id2Loc[numLocs++] = {x, y};
     }
-    return loc2ID[{x, y}]; 
+    return loc2ID[{x, y}];
   };
 
   auto isNewLoc = [&](int x, int y) {

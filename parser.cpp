@@ -69,7 +69,7 @@ void parse(Chip &chip, const char *dir = nullptr) {
       diffValue = std::stoi(tokens[3]);
       chip.nonDefaultSupplyGrids.push_back(
           NonDefaultSupplyGGrid(rowIdx, colIdx, layIdx, diffValue)); 
-      chip.pos2SupplyDelta.insert({M3(rowIdx, colIdx, layIdx), diffValue});           
+      chip.pos2SupplyDelta.insert({rt::T3{rowIdx, colIdx, layIdx}, diffValue});           
     } 
     else if (tokens[0] == "NumMasterCell") {
       chip.numMasterCell = std::stoi(tokens[1]);

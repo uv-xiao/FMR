@@ -43,12 +43,9 @@ void Space::_prepareCells() {
   // add blockage demands to cell demands
   for (auto &entry : cellInss) {
     auto &cell = entry.second;
-    std::string mc = cell.mcName;
-    auto mc_ptr = chip.masterCells.find(mc);
-    
     for (auto blockage : _getBlockagesFromCell(cell)) {
       auto layerIdx = chip.layerName2Idx[blockage.layer];
-      _addBlockage2Cell({cell.rowIdx, cell.colIdx, layerIdx}, blockage);
+      _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
     }
   }
 
@@ -67,21 +64,8 @@ std::vector<db::Blockage> Space::_getBlockagesFromCell(
   return mc_ptr->second.blockages;
 }
 
-void Space::_addBlockage2Cell(const T3 &b, const db::Blockage &blockage) {
-  auto ptr= demands.find(b);
-  if (ptr == demands.end())
-    demands.insert({b, blockage.demand});
-  else
-    ptr->second += blockage.demand;
-}
-
 void Space::_addNet2Cell(const T3 &b, const std::string &netName) {
-  auto ptr = demands.find(b);
-  if (ptr == demands.end())
-    demands.insert({b, 1});
-  else
-    ptr->second += 1;
-
+  _addDemandOnGrid(b, 1);
   auto ptr2 = passByNets.find(b);
   if (ptr2 == passByNets.end()) {
     passByNets.insert({b, stringset()});
@@ -90,4 +74,51 @@ void Space::_addNet2Cell(const T3 &b, const std::string &netName) {
   else
     ptr2->second.insert(netName);
 }
+
+void Space::_moveCell(std::string cellName, T2 from, T2 to) {
+  const auto& blkgs = _getBlockagesFromCell(cellInss[cellName]);
+  for (auto& blkg: blkgs) {
+    int layer = chip.layerName2Idx[blkg.layer];
+    _addDemandOnGrid(T3{std::get<0>(from), std::get<1>(from), layer}, -blkg.demand);
+    _addDemandOnGrid(T3{std::get<0>(to), std::get<1>(to), layer}, blkg.demand);
+  }
+  cellInss[cellName].rowIdx = std::get<0>(to);
+  cellInss[cellName].colIdx = std::get<1>(to);
+}
+
+void Space::_addDemandOnGrid(const T3 &b, int delta = 1) {
+  auto ptr = demands.find(b);
+  if (ptr == demands.end()) {
+    demands.insert({b, delta});
+    return;
+  }
+  ptr->second += delta;
+  if (ptr->second == 0)
+    demands.erase(b);
+  return;
+}
+
+int Space::_getDemandOnGrid(const T3 &b) {
+  auto ptr = demands.find(b);
+  if (ptr == demands.end()) {
+    return 0;
+  }
+  return ptr->second;
+}
+
+int Space::_sumLayer(const T2 &b, int (Space::*getValue)(const T3 &b)) {
+  int value = 0;
+  for (auto& layer: chip.layers) {
+    int layerIdx = layer.first;
+    value += (this->*getValue)(T3{std::get<0>(b), std::get<1>(b), layerIdx});
+  }
+  return value;
+}
+
+int Space::_getSupplyOnGrid(const T3 &b) {
+  auto ptr = chip.pos2SupplyDelta.find(b);
+  int delta = (ptr != chip.pos2SupplyDelta.end()) ? ptr->second : 0;
+  return chip.layers[std::get<2>(b)].defaultSupply + delta;
+}
+
 } // namespace rt
