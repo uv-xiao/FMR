@@ -39,7 +39,8 @@ private:
   void _prepareCells();
 
   std::vector<db::Blockage> _getBlockagesFromCell(const db::CellIns &cell);
-  void _addNet2Cell(const T3 &b, const std::string &netName);
+  void _addNet2Grid(const T3 &b, const std::string &netName);
+  void _removeNetFromGrid(const T3 &b, const std::string &netName);
 
   void _addDemandOnGrid(const T3 &b, int delta = 1);
   int _getDemandOnGrid(const T3 &b);

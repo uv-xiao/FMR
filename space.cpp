@@ -53,7 +53,7 @@ void Space::_prepareCells() {
   // store nets, which pass a cell
   for (auto ent : nets) {
     for (auto cell : ent.second->getOccupiedCells())
-      _addNet2Cell(cell.first, ent.first);
+      _addNet2Grid(cell.first, ent.first);
   }
 }
 
@@ -64,7 +64,7 @@ std::vector<db::Blockage> Space::_getBlockagesFromCell(
   return mc_ptr->second.blockages;
 }
 
-void Space::_addNet2Cell(const T3 &b, const std::string &netName) {
+void Space::_addNet2Grid(const T3 &b, const std::string &netName) {
   _addDemandOnGrid(b, 1);
   auto ptr2 = passByNets.find(b);
   if (ptr2 == passByNets.end()) {
@@ -75,6 +75,14 @@ void Space::_addNet2Cell(const T3 &b, const std::string &netName) {
     ptr2->second.insert(netName);
 }
 
+void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
+  _addDemandOnGrid(b, -1);
+  auto ptr2 = passByNets.find(b);
+  assert(ptr2 != passByNets.end() && "Net must be in passByNets");
+  ptr2->second.erase(netName);
+  if (ptr2->second.empty())
+    passByNets.erase(b);
+}
 void Space::_moveCell(std::string cellName, T2 from, T2 to) {
   const auto& blkgs = _getBlockagesFromCell(cellInss[cellName]);
   for (auto& blkg: blkgs) {

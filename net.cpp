@@ -15,7 +15,7 @@ int Net::_getNodeIdx(const T3 &cord) {
     ret = numNodes ++;
     nodes.insert({ret, Node(cord[0], cord[1], cord[2], ret)});
     occupied.insert({cord, ret});
-    space._addDemandOnGrid(cord, 1);
+    space._addNet2Grid(cord, basics.netName);
   } 
   else
     ret = occupied[cord];
@@ -61,7 +61,7 @@ int Net::_addEdge(int a, int b) {
 
 void Net::_removeNode(int x) {
   assert(nodes.find(x) != nodes.end() && "must remove existing node");
-  space._addDemandOnGrid(nodes[x], -1);
+  space._removeNetFromGrid(nodes[x], basics.netName);
   occupied.erase(nodes[x]);
   nodes.erase(x);
 }
@@ -223,7 +223,7 @@ double Net::_estCost(const T3 a) {
     return (double)supply / (supply - demand);
   };
 
-  if (_occupy(a)) {
+  if (!_occupy(a)) {
     ret += basics.weight * space.chip.layers[a[2]].powerFactor;
     int demand = space._getDemandOnGrid(a);
     int supply = space._getSupplyOnGrid(a);
@@ -315,10 +315,16 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
       });
     bestInWorse = toSort[0];
 
-    assert(bestInWorse.second < violationCost 
-        && "at least one available direction");
-    
-    _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
+    if (bestInWorse.second >= violationCost) {
+      std::cerr << "Have to go back at (" 
+                << a[0] << ", " << a[1] << ", " << a[2]
+                << ") " << oppDir << std::endl;
+      _simpleRoute2Pins(move(a, oppDir), b, oppDir);
+    }
+    // assert(bestInWorse.second < violationCost 
+    //     && "at least one available direction");
+    else
+      _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
   }
 }
 
