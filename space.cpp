@@ -83,15 +83,16 @@ void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
   if (ptr2->second.empty())
     passByNets.erase(b);
 }
-void Space::_moveCell(std::string cellName, T2 from, T2 to) {
-  const auto& blkgs = _getBlockagesFromCell(cellInss[cellName]);
+void Space::_moveCell(std::string cellName, T2 to) {
+  auto& cell = cellInss[cellName];
+  const auto& blkgs = _getBlockagesFromCell(cell);
   for (auto& blkg: blkgs) {
     int layer = chip.layerName2Idx[blkg.layer];
-    _addDemandOnGrid(T3{std::get<0>(from), std::get<1>(from), layer}, -blkg.demand);
+    _addDemandOnGrid(T3{cell.rowIdx, cell.colIdx, layer}, -blkg.demand);
     _addDemandOnGrid(T3{std::get<0>(to), std::get<1>(to), layer}, blkg.demand);
   }
-  cellInss[cellName].rowIdx = std::get<0>(to);
-  cellInss[cellName].colIdx = std::get<1>(to);
+  cell.rowIdx = std::get<0>(to);
+  cell.colIdx = std::get<1>(to);
 }
 
 void Space::_addDemandOnGrid(const T3 &b, int delta = 1) {

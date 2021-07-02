@@ -46,8 +46,8 @@ struct Edge {
   Edge() {}
   Edge(int id1, int id2)
     :id1(id1), id2(id2) {}
-  operator std::pair<int, int> () const {
-    return std::make_pair(id1, id2);
+  operator T2() const {
+    return T2{id1, id2};
   }
 };
 
@@ -104,7 +104,9 @@ private:
   
   void _aStarRoute2Pins(const T3 &a, const T3 &b);
   void _aStarRoute(cf::Config &config);
-
+  
+  void _removeEdgeFromGrid(T3 from, T3 to);
+  void _addEdge2Grid(T3 from, T3 to);
 public:
 
   Net(Space &space);
@@ -123,7 +125,7 @@ public:
   const std::map<T3, int> & getOccupiedCells() {
     return occupied;
   }
-
+  
   void cleanAll();
   void modifyCells();
   void route(cf::Config &config);
