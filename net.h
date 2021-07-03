@@ -88,9 +88,9 @@ private:
   void _removeNode(int x);
   void _removeEdge(int edgeID);
   int _addNode(const T3 &cord);
-  int _addEdge(int a, int b);
+  int _addEdge(int a, int b, bool initial);
   int _getNodeIdx(const T3 &cord);
-  int _getEdgeIdx(int a, int b); 
+  int _getEdgeIdx(int a, int b, bool initial); 
   std::vector<T3> _getNetPins();
 
   int _getCenter();
