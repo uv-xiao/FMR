@@ -1,7 +1,7 @@
 #include "move.h"
-
 #include "math.h"
 
+const int INF = 0x3f3f3f3f;
 namespace rt {
 
 void Move::init() {
@@ -35,7 +35,7 @@ void Move::init() {
 std::pair<T2, T2> Move::boundingBox(const std::string& netName,
                                     const std::string& exCellName) {
   auto net = space.chip.nets[netName];
-  int min_x = INFINITY, min_y = INFINITY, max_x = 0, max_y = 0;
+  int min_x = INF, min_y = INF, max_x = 0, max_y = 0;
   for (auto& pin : net.pins) {
     auto cellName = pin[0];
     if (cellName == exCellName) continue;
@@ -75,8 +75,8 @@ std::pair<T2, T2> Move::optimalRegion(const std::string& cellName) {
 }
 
 double Move::locCongest(T2 loc, double factor) {
-  return space._sumLayer(loc, Space::_getSupplyOnGrid) -
-         factor * space._sumLayer(loc, Space::_getDemandOnGrid);
+  return space._sumLayer(loc, &Space::_getSupplyOnGrid) -
+         factor * space._sumLayer(loc, &Space::_getDemandOnGrid);
 }
 
 double Move::computeCongest(std::pair<T2, T2> box, double factor) {
@@ -185,7 +185,7 @@ void Move::netMove(int direction) {
         moveCandidate.push_back(coord_cell + newCenter[netName] -
                                 center[netName]);
     }
-    int coord_max = 0, coord_min = INFINITY;
+    int coord_max = 0, coord_min = INF;
     for (auto cand : moveCandidate) {
       coord_max = std::max(coord_max, cand);
       coord_min = std::min(coord_min, cand);

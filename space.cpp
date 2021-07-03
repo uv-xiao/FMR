@@ -101,7 +101,7 @@ void Space::_moveCell(std::string cellName, T2 to) {
   cell.colIdx = std::get<1>(to);
 }
 
-void Space::_addDemandOnGrid(const T3 &b, int delta = 1) {
+void Space::_addDemandOnGrid(const T3 &b, int delta) {
   auto ptr = demands.find(b);
   if (ptr == demands.end()) {
     demands.insert({b, delta});
