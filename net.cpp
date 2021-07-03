@@ -285,6 +285,8 @@ double Net::_estCost(const T3 a) {
 void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
 
 
+  assert(a[2] >= space.chip.layerName2Idx[basics.layer] 
+      && "Node during routing must be above minLayer");
   static const int dx[6] = {1, -1, 0, 0, 0, 0},
                    dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
@@ -334,7 +336,8 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
 
   // First, try candidates in better
   for (auto x : better) {
-    toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
   }
   std::sort(toSort.begin(), toSort.end(), 
     [&](const T2 &a, const T2 &b) {
@@ -348,7 +351,8 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   else {
     toSort.clear();
     for (auto x : worse) {
-      toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+      if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+        toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
     }  
     std::sort(toSort.begin(), toSort.end(), 
       [&](const T2 &a, const T2 &b) {
@@ -374,6 +378,7 @@ void Net::_simpleRoute(cf::Config &config) {
   std::map<T2, std::vector<int>> loc2RNode;
   std::map<int, T3> routeNodes;
   std::map<T2, int> loc2ID;
+  std::set<int> newLocs;
   std::map<int, T2> id2Loc;
   std::vector<std::set<int>> locEdges;
 
@@ -464,6 +469,7 @@ void Net::_simpleRoute(cf::Config &config) {
       if (isINode) {
         int loc = addLoc(x, y);
         int id = addNode(x, y, -1);
+        newLocs.insert(loc);
         addLoc2Node(x, y, id);
       }
     }
@@ -474,15 +480,16 @@ void Net::_simpleRoute(cf::Config &config) {
   bool someChange = true;
   while (someChange) {
     someChange = false;
-    for (int i = 0; i < numLocs; i++) {
+    for (auto i : newLocs) {
       auto t2 = id2Loc[i];
-      if (loc2RNode[t2].size() == 1) {
+      if (true) {
+        assert(loc2RNode.size() == 1 && "New loc must have one RNode");
         auto id = loc2RNode[t2][0];
         auto rnode = routeNodes[id];
-        if (rnode[2] == -1) {
+        if (true) {
           std::vector<int> layers;
           for (auto y : locEdges[i]) 
-            if (y > i) {
+            if (y != i) {
               auto t2_ = id2Loc[y];
               for (auto nodeid : loc2RNode[t2_]) {
                 auto rnode_ = routeNodes[nodeid];
@@ -520,6 +527,9 @@ void Net::_simpleRoute(cf::Config &config) {
     std::sort(layers.begin(), layers.end(),
       [](int a, int b) { return a > b; });
     
+    assert(layers.back() >= space.chip.layerName2Idx[basics.layer] 
+          && "Node must be above minLayer");
+
     for (int i = 0; i + 1 < layers.size(); i++)
       _simpleRoute2Pins(T3{t2.first, t2.second, layers[i]}, 
                         T3{t2.first, t2.second, layers[i+1]});
