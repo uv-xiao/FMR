@@ -38,6 +38,7 @@ void Space::_prepareCells() {
   // store cell instances from chip
   cellInss = chip.cellInss;
 
+/*
   // add blockage demands to cell demands
   for (auto &entry : cellInss) {
     auto &cell = entry.second;
@@ -46,8 +47,9 @@ void Space::_prepareCells() {
       _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
     }
   }
+*/
 
-  // colllect fixed cells and cells constraint in voltage areas
+  // collect fixed cells and cells constraint in voltage areas
   for (auto &entry : cellInss)
     if (!entry.second.movable) fixedCells.insert(entry.first);
   for (auto &area : chip.voltageAreas)
@@ -56,12 +58,14 @@ void Space::_prepareCells() {
         Cell2voltageArea.insert({cellName, area.name});
       }
 
+/*
   // add net demands to cell demands
   // store nets, which pass a cell
   for (auto ent : nets) {
     for (auto cell : ent.second->getOccupiedCells())
       _addNet2Grid(cell.first, ent.first);
   }
+*/
 }
 
 std::vector<db::Blockage> Space::_getBlockagesFromCell(

@@ -22,7 +22,7 @@ int Net::_getNodeIdx(const T3 &cord) {
   return ret;
 }
 
-int Net::_getEdgeIdx(int a, int b) {
+int Net::_getEdgeIdx(int a, int b, bool initial = false) {
   if (a == b) {
     throw std::runtime_error("self-edge");
   }
@@ -30,7 +30,8 @@ int Net::_getEdgeIdx(int a, int b) {
   int ret;
   if (edgeIdx.find({a,b}) == edgeIdx.end()) {
     ret = numEdges ++;
-    _addEdge2Grid(T3(nodes[a]), T3(nodes[b]));
+    if (initial)
+      _addEdge2Grid(T3(nodes[a]), T3(nodes[b]));
     edges.insert({ret, Edge(a, b)});
     edgeIdx.insert({{a, b}, ret});
   }
@@ -56,8 +57,8 @@ std::vector<T3> Net::_getNetPins() {
 int Net::_addNode(const T3 &cord) {
   return _getNodeIdx(cord);
 }
-int Net::_addEdge(int a, int b) {
-  return _getEdgeIdx(a, b);
+int Net::_addEdge(int a, int b, bool initial = false) {
+  return _getEdgeIdx(a, b, initial);
 }
 
 void Net::_removeEdgeFromGrid(T3 from, T3 to) {
@@ -220,7 +221,7 @@ void Net::constructGraph() {
     node_ptr1->second.deg += 1;
     node_ptr2->second.deg += 1;
     
-    int edgeIdx = _addEdge(id1, id2);
+    int edgeIdx = _addEdge(id1, id2, 1);
 
     node_ptr1->second.addLink(edgeIdx);
     node_ptr2->second.addLink(edgeIdx);
