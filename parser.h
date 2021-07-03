@@ -87,7 +87,7 @@ struct Net {
 struct VoltageArea {
   std::string name;
   int gGridCount;
-  std::vector<std::array<int, 2> > gGridIdx;
+  std::set<std::array<int, 2> > gGridIdx;
   int insCount;
   std::vector<std::string> insName;
   VoltageArea() {}
