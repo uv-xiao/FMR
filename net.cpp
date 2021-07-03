@@ -30,6 +30,7 @@ int Net::_getEdgeIdx(int a, int b) {
   int ret;
   if (edgeIdx.find({a,b}) == edgeIdx.end()) {
     ret = numEdges ++;
+    _addEdge2Grid(T3(nodes[a]), T3(nodes[b]));
     edges.insert({ret, Edge(a, b)});
     edgeIdx.insert({{a, b}, ret});
   }
@@ -59,6 +60,42 @@ int Net::_addEdge(int a, int b) {
   return _getEdgeIdx(a, b);
 }
 
+void Net::_removeEdgeFromGrid(T3 from, T3 to) {
+  int neq, direct;
+  for (int i = 0; i < 3; i++)
+    if (from[i] != to[i]) {
+      neq += 1;
+      direct = i;
+    }
+  if (neq == 1) {
+      if (from[direct] > to[direct])
+        std::swap(from, to);
+      T3 tmp = from;
+      for (int i = from[direct] + 1; i < to[direct]; i++) {
+        tmp[direct] = i;
+        space._removeNetFromGrid(tmp, basics.netName);
+      }
+  } else assert("must be in x/y/z direction");
+}
+
+void Net::_addEdge2Grid(T3 from, T3 to) {
+  int neq, direct;
+  for (int i = 0; i < 3; i++)
+    if (from[i] != to[i]) {
+      neq += 1;
+      direct = i;
+    }
+  if (neq == 1) {
+      if (from[direct] > to[direct])
+        std::swap(from, to);
+      T3 tmp = from;
+      for (int i = from[direct] + 1; i < to[direct]; i++) {
+        tmp[direct] = i;
+        space._addNet2Grid(tmp, basics.netName);
+      }
+  } else assert("must be in x/y/z direction");
+}
+
 void Net::_removeNode(int x) {
   assert(nodes.find(x) != nodes.end() && "must remove existing node");
   space._removeNetFromGrid(nodes[x], basics.netName);
@@ -67,7 +104,9 @@ void Net::_removeNode(int x) {
 }
 
 void Net::_removeEdge(int edgeID) {
-  edgeIdx.erase(edges[edgeID]);
+  auto& edge = edges[edgeID];
+  _removeEdgeFromGrid(nodes[edge.id1], nodes[edge.id2]);
+  edgeIdx.erase(edge);
   edges.erase(edgeID);
 }
 
@@ -197,6 +236,12 @@ void Net::optimizeGraph() {
 }
 
 void Net::cleanAll() {
+  for (auto& edge: edges)
+    _removeEdgeFromGrid(nodes[edge.second.id1], nodes[edge.second.id2]);
+  edges.clear();
+  edgeIdx.clear();
+  numEdges = 0;
+
   std::vector<int> toErase;
   for (auto node : nodes) {
     toErase.push_back(node.first);
@@ -204,10 +249,6 @@ void Net::cleanAll() {
   for (auto i : toErase)
     _removeNode(i);
   numNodes = 0;
-
-  edges.clear();
-  edgeIdx.clear();
-  numEdges = 0;
 }
 
 void Net::modifyCells() {

@@ -49,7 +49,7 @@ private:
 
   int _sumLayer(const T2 &b, int (Space::*getValue)(const T3 &b));
 
-  void _moveCell(std::string cellName, T2 from, T2 to);
+  void _moveCell(std::string cellName, T2 to);
   
 public:
   Space() = delete;
