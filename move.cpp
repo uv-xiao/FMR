@@ -118,8 +118,7 @@ T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
   return Best_loc;
 }
 
-void Move::bigStep() {
-  std::string cellName;
+void Move::bigStep(std::string cellName) {
   auto region = optimalRegion(cellName);
   T2 bestLoc = computeBestCongestLoc(cellName, region, 1.0);
 
@@ -131,7 +130,18 @@ void Move::bigStep() {
   }
 }
 
-void Move::smallStep() {}
+void Move::smallStep(std::string cellName) {
+  auto& cell = space.cellInss[cellName];
+  T2 bestLoc = computeBestCongestLoc(
+      cellName, std::make_pair(T2{cell.rowIdx - 1, cell.rowIdx + 1},
+                               T2{cell.colIdx - 1, cell.colIdx + 1}));
+  if (bestLoc != T2{space.cellInss[cellName]}) {
+    space._moveCell(cellName, bestLoc);
+    for (auto& netName : cell2nets[cellName]) {
+      space.nets[netName]->reroute(conf);
+    }
+  }
+}
 
 void Move::netMove(int direction) {
   std::map<std::string, int> center;
@@ -198,7 +208,7 @@ void Move::netMove(int direction) {
     return cell2Move;
   };
 
-  auto net2Move = computeBestNet2Move(3, 0.3);
+  auto net2Move = computeBestNet2Move(2, 0.3);
   auto cell2Move = computeCell2Move(net2Move);
   std::map<std::string, T2> moveLoc;
   for (auto& cellName : cell2Move) {
@@ -232,11 +242,17 @@ void Move::netMove(int direction) {
           1.0);
     if (bestLoc != T2{cell}) moveLoc.insert({cellName, bestLoc});
   }
-  for (auto pair : moveLoc) space._moveCell(pair.first, pair.second);
+  stringset calibratedCell2Move;
+  for (auto pair : moveLoc)
+    if (space.movedCells.find(pair.first) != space.movedCells.end() ||
+        space.movedCells.size() < space.chip.maxCellMove) {
+      calibratedCell2Move.insert(pair.first);
+      space._moveCell(pair.first, pair.second);
+    }
 
   stringset affectedNets;
-  for (auto& pair : moveLoc)
-    for (auto& netName : cell2nets[pair.first]) {
+  for (auto& cellName : calibratedCell2Move)
+    for (auto& netName : cell2nets[cellName]) {
       affectedNets.insert(netName);
     }
   for (auto& netName : affectedNets) {

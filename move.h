@@ -44,11 +44,11 @@ class Move {
 
   // move a cell to the best location of its optimal region,
   // and reroute impacted nets
-  void bigStep();
+  void bigStep(std::string cellName);
 
   // move a cell to the better location around its neighborhood
   // and reroute impacted nets
-  void smallStep();
+  void smallStep(std::string cellName);
 
   // move cells in several nets, and reroute all impacted nets
   void netMove(int direction);

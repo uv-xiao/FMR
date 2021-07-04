@@ -16,6 +16,7 @@ namespace rt {
 // Space is the 3D grid, where routing happens
 class Space {
   friend class Net;
+  friend class Router;
   friend class Move;
 
  private:
@@ -32,14 +33,20 @@ class Space {
   std::map<std::string, db::CellIns> cellInss;
 
   stringset fixedCells;
-  std::map<std::string, db::VoltageArea&> Cell2voltageArea;
+  std::vector<std::string> movableCells;
+  std::map<std::string, db::VoltageArea &> Cell2voltageArea;
+
+  // Cells already moved
+  stringset movedCells;
 
   // Store Nets, which contains routing results
   std::map<std::string, net_sptr> nets;
 
-  void _prepareNetsFromChip();
-
+  // Intialize cell-related analysis information
   void _prepareCells();
+
+  // Initialize net-related analysis information
+  void _prepareNetsFromChip();
 
   std::vector<db::Blockage> _getBlockagesFromCell(const db::CellIns &cell);
   void _addNet2Grid(const T3 &b, const std::string &netName);

@@ -11,6 +11,44 @@ Space::Space(db::Chip &chip) : chip(chip) {
   _prepareCells();
 }
 
+void Space::_prepareCells() {
+  // Prepare cells from Net
+
+  // store cell instances from chip
+  cellInss = chip.cellInss;
+
+  // add blockage demands to cell demands
+  for (auto &entry : cellInss) {
+    auto &cell = entry.second;
+    for (auto blockage : _getBlockagesFromCell(cell)) {
+      auto layerIdx = chip.layerName2Idx[blockage.layer];
+      _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
+    }
+  }
+
+  // collect fixed cells and cells constraint in voltage areas
+  for (auto &entry : cellInss) {
+    if (!entry.second.movable)
+      fixedCells.insert(entry.first);
+    else
+      movableCells.push_back(entry.first);
+  }
+  for (auto &area : chip.voltageAreas)
+    for (auto &cellName : area.insName)
+      if (fixedCells.find(cellName) == fixedCells.end()) {
+        Cell2voltageArea.insert({cellName, area});
+      }
+
+  /*
+    // add net demands to cell demands
+    // store nets, which pass a cell
+    for (auto ent : nets) {
+      for (auto cell : ent.second->getOccupiedCells())
+        _addNet2Grid(cell.first, ent.first);
+    }
+  */
+}
+
 void Space::_prepareNetsFromChip() {
   // Extract Nets from chip
   for (auto ent : chip.nets) {
@@ -30,40 +68,6 @@ void Space::_prepareNetsFromChip() {
     // construct graph(nodes, edges), and do simplification work
     ptr->second->constructGraph();
   }
-}
-
-void Space::_prepareCells() {
-  // Prepare cells from Net
-
-  // store cell instances from chip
-  cellInss = chip.cellInss;
-
-  // add blockage demands to cell demands
-  for (auto &entry : cellInss) {
-    auto &cell = entry.second;
-    for (auto blockage : _getBlockagesFromCell(cell)) {
-      auto layerIdx = chip.layerName2Idx[blockage.layer];
-      _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
-    }
-  }
-
-  // collect fixed cells and cells constraint in voltage areas
-  for (auto &entry : cellInss)
-    if (!entry.second.movable) fixedCells.insert(entry.first);
-  for (auto &area : chip.voltageAreas)
-    for (auto &cellName : area.insName)
-      if (fixedCells.find(cellName) == fixedCells.end()) {
-        Cell2voltageArea.insert({cellName, area});
-      }
-
-  /*
-    // add net demands to cell demands
-    // store nets, which pass a cell
-    for (auto ent : nets) {
-      for (auto cell : ent.second->getOccupiedCells())
-        _addNet2Grid(cell.first, ent.first);
-    }
-  */
 }
 
 std::vector<db::Blockage> Space::_getBlockagesFromCell(
@@ -92,6 +96,7 @@ void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
 }
 
 void Space::_moveCell(std::string cellName, T2 to) {
+  movedCells.insert(cellName);
   auto &cell = cellInss[cellName];
   const auto &blkgs = _getBlockagesFromCell(cell);
   for (auto &blkg : blkgs) {
