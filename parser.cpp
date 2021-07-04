@@ -151,7 +151,7 @@ void parse(Chip &chip, const char *dir = nullptr) {
       int rowIdx = std::stoi(tokens[0]);
       int colIdx = std::stoi(tokens[1]);
       chip.voltageAreas.back().gGridIdx.insert(
-            std::array<int, 2>{rowIdx, colIdx});
+            rt::T2{rowIdx, colIdx});
     } 
     else if (tokens.size() == 1) {
       chip.voltageAreas.back().insName.push_back(tokens[0]);

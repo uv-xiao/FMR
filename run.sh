@@ -1,3 +1,3 @@
 #/usr/bin/sh
 
-g++ parser.cpp -o parser
+g++ main.cpp move.cpp config.cpp net.cpp parser.cpp router.cpp space.cpp
