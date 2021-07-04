@@ -278,6 +278,95 @@ double Net::_estCost(const T3 a) {
   return ret;
 }
 
+
+bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
+                          const int lastDir) {
+  assert(a[2] >= space.chip.layerName2Idx[basics.layer] 
+      && "Node during routing must be above minLayer");
+  static const int dx[6] = {1, -1, 0, 0, 0, 0},
+                   dy[6] = {0, 0, 1, -1, 0, 0},
+                   dz[6] = {0, 0, 0, 0, 1, -1};
+
+  auto move = [&](const T3 a, int k) {
+    return T3{a[0] + dx[k], a[1] + dy[k], a[2] + dz[k]};
+  };
+
+  int oppDir = lastDir ^ 1;
+  passed.push_back(a);
+  if (a == b) {
+    int i = 0, last = -1;
+    for (auto x : passed) {
+      int id {_addNode(x)};
+      if (i > 0)
+        _addEdge(last, id);
+      i = i + 1;
+      last = id;
+    }
+    return true;
+  }
+
+  std::vector<int> better, worse;
+  auto prepareCandidate = [&](int k) {
+    if (a[k] < b[k]) {
+      if (k * 2 != oppDir)
+        better.push_back(k * 2);
+      if (k * 2 + 1!= oppDir)
+        worse.push_back(k * 2 + 1);  
+    }
+    else if (a[k] > b[k]) {
+      if (k * 2 + 1 != oppDir)
+        better.push_back(k * 2 + 1);
+      if (k * 2 != oppDir)
+        worse.push_back(k * 2);
+    }
+    else {
+      if (k * 2  != oppDir)
+        worse.push_back(k * 2);
+      if (k * 2 + 1 != oppDir)
+        worse.push_back(k * 2 + 1);
+    }
+  };
+
+  for (int i = 0; i < 3; i++)
+    prepareCandidate(i);
+  
+  std::vector< std::pair<int, double> > toSort, order;
+
+  // First, try candidates in better
+  for (auto x : better) {
+    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+  }
+  std::sort(toSort.begin(), toSort.end(), 
+    [&](const T2 &a, const T2 &b) {
+      return a.second < b.second;
+    }); 
+  for (auto x : toSort) 
+    if (x.second < violationCost)
+      order.push_back(x);
+  toSort.clear();
+  // Then, try candidates in worse
+  for (auto x : worse) {
+    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
+  }  
+  std::sort(toSort.begin(), toSort.end(), 
+    [&](const T2 &a, const T2 &b) {
+      return a.second < b.second;
+    });
+  for (auto x : toSort)
+    if (x.second < violationCost)
+      order.push_back(x);
+
+  for (auto x : order) {
+    if (_simpleRouteDFS(move(a, x.first), b, passed, x.first))
+      return true;
+  }
+
+  passed.pop_back();
+  return false;
+}
+
 /*
  * (1, 0, 0) : 0 , (-1, 0, 0) : 1
  * (0, 1, 0) : 2 , (0, -1, 0) : 3
@@ -531,9 +620,19 @@ void Net::_simpleRoute(cf::Config &config) {
     assert(layers.back() >= space.chip.layerName2Idx[basics.layer] 
           && "Node must be above minLayer");
 
-    for (int i = 0; i + 1 < layers.size(); i++)
+    for (int i = 0; i + 1 < layers.size(); i++) {
       _simpleRoute2Pins(T3{t2.first, t2.second, layers[i]}, 
                         T3{t2.first, t2.second, layers[i+1]});
+      
+      // std::vector<T3> passed;
+      // if (_simpleRouteDFS(T3{t2.first, t2.second, layers[i]}, 
+      //                     T3{t2.first, t2.second, layers[i+1]}, passed))
+      //   std::cerr << "Can't found legal route between ("
+      //             << t2.first << ", " << t2.second << ", " << layers[i]
+      //             << ") and ("
+      //             << t2.first << ", " << t2.second << ", " << layers[i+1]
+      //             << ")" << std::endl; 
+    }
     highest.push_back(layers[0]);
   }
 
@@ -544,9 +643,18 @@ void Net::_simpleRoute(cf::Config &config) {
         auto t2_ = id2Loc[y];
         _simpleRoute2Pins(T3{t2.first, t2.second, highest[i]}, 
                           T3{t2_.first, t2_.second, highest[y]});
+
+        // std::vector<T3> passed;
+        // if (_simpleRouteDFS(T3{t2.first, t2.second, highest[i]}, 
+        //                 T3{t2_.first, t2_.second, highest[y]}, passed))
+        //   std::cerr << "Can't found legal route between ("
+        //   << t2.first << ", " << t2.second << ", " << highest[i]
+        //   << ") and ("
+        //   << t2_.first << ", " << t2_.second << ", " << highest[y]
+        //   << ")" << std::endl; 
+
       }
   }
-
 }
 
 void Net::_aStarRoute(cf::Config &config) {
