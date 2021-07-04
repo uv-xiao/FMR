@@ -1,13 +1,15 @@
 # FMR
 
 ## TODO
+* Legalization
+* experiment
 
-* Implement Router
-* Explore cell movement stategy
 
 ## Done
 
-* Write and debug parser
+* parser
+* router
+* cell movement
 
 ## Ideas
 
