@@ -25,6 +25,7 @@ class Move {
   std::map<std::string, stringset> net2cells;
   void init();
   void netMove(int direction);
+  T2 computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box, double factor);
   double locCongest(T2 loc, double factor = 1.0);
   std::map<stringpair, int> shareCells;
   double computeCongest(std::pair<T2, T2> box, double factor = 1.0);

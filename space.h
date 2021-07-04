@@ -32,7 +32,7 @@ class Space {
   std::map<std::string, db::CellIns> cellInss;
 
   stringset fixedCells;
-  std::map<std::string, std::string> Cell2voltageArea;
+  std::map<std::string, db::VoltageArea&> Cell2voltageArea;
 
   // Store Nets, which contains routing results
   std::map<std::string, net_sptr> nets;

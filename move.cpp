@@ -1,4 +1,5 @@
 #include "move.h"
+
 #include "math.h"
 
 const int INF = 0x3f3f3f3f;
@@ -90,23 +91,40 @@ double Move::computeCongest(std::pair<T2, T2> box, double factor) {
   return congest;
 }
 
+T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
+                               double factor) {
+  auto ptr = space.Cell2voltageArea.find(cellName);
+  bool in_voltage_area = ptr != space.Cell2voltageArea.end();
+  T2 Best_loc = space.cellInss[cellName];
+  int lx = std::get<0>(box).first, ux = std::get<0>(box).second;
+  int ly = std::get<1>(box).first, uy = std::get<1>(box).second;
+  double bestCongest = 0;
+  for (int x = lx; x <= ux; x++)
+    for (int y = ly; y <= uy; y++) {
+      T2 loc{x, y};
+      if (in_voltage_area &&
+          ptr->second.gGridIdx.find(loc) == ptr->second.gGridIdx.end())
+        continue;
+      double congest = locCongest(T2{x, y}, factor);
+      if (congest > bestCongest) {
+        bestCongest = congest;
+        Best_loc = T2{x, y};
+      }
+    }
+  return Best_loc;
+}
+
 void Move::bigStep() {
   std::string cellName;
   auto region = optimalRegion(cellName);
+  T2 bestLoc = computeBestCongestLoc(cellName, region, 1.0);
 
-  double max_congest = 0;
-  T2 best_loc;
-  for (int x = std::get<0>(region).first; x <= std::get<0>(region).second; x++)
-    for (int y = std::get<1>(region).first; y <= std::get<1>(region).second;
-         y++) {
-      double congest = locCongest(T2{x, y});
-      if (congest > max_congest) {
-        max_congest = congest;
-        best_loc = T2{x, y};
-      }
+  if (bestLoc != T2{space.cellInss[cellName]}) {
+    space._moveCell(cellName, bestLoc);
+    for (auto& netName : cell2nets[cellName]) {
+      space.nets[netName]->reroute(conf);
     }
-  space._moveCell(cellName, best_loc);
-  for (auto& netName : cell2nets[cellName]) space.nets[netName]->reroute(conf);
+  }
 }
 
 void Move::netMove(int direction) {
@@ -167,7 +185,8 @@ void Move::netMove(int direction) {
     stringset cell2Move;
     for (auto& netName : net2Move) {
       for (auto& cell : net2cells[netName]) {
-        cell2Move.insert(cell);
+        if (space.fixedCells.find(cell) == space.fixedCells.end())
+          cell2Move.insert(cell);
       }
     }
     return cell2Move;
@@ -175,7 +194,7 @@ void Move::netMove(int direction) {
 
   auto net2Move = computeBestNet2Move(3, 0.3);
   auto cell2Move = computeCell2Move(net2Move);
-  std::map<std::string, T2> moveRegion;
+  std::map<std::string, T2> moveLoc;
   for (auto& cellName : cell2Move) {
     auto& cell = space.cellInss[cellName];
     int coord_cell = (direction == 0) ? cell.rowIdx : cell.colIdx;
@@ -196,26 +215,24 @@ void Move::netMove(int direction) {
       if (cand > middle) r = std::min(r, cand);
       if (cand < middle) l = std::max(l, cand);
     }
-    T2 c1, c2;
-    if (direction == 0) {
-      c1 = T2{l, cell.colIdx};
-      c2 = T2{r, cell.colIdx};
-    } else {
-      c1 = T2{cell.rowIdx, l};
-      c2 = T2{cell.rowIdx, r};
-    }
-    if (computeCongest(std::make_pair(c1, c1)) >
-        computeCongest(std::make_pair(c2, c2)))
-      moveRegion.insert({cellName, c1});
+    T2 bestLoc;
+    if (direction == 0)
+      bestLoc = computeBestCongestLoc(
+          cellName, std::make_pair(T2{l, r}, T2{cell.colIdx, cell.colIdx}),
+          1.0);
     else
-      moveRegion.insert({cellName, c2});
+      bestLoc = computeBestCongestLoc(
+          cellName, std::make_pair(T2{cell.rowIdx, cell.rowIdx}, T2{l, r}),
+          1.0);
+    if (bestLoc != T2{cell}) moveLoc.insert({cellName, bestLoc});
   }
-  for (auto pair : moveRegion) space._moveCell(pair.first, pair.second);
+  for (auto pair : moveLoc) space._moveCell(pair.first, pair.second);
 
   stringset affectedNets;
-  for (auto& cellName : cell2Move) {
-    for (auto& netName : cell2nets[cellName]) affectedNets.insert(netName);
-  }
+  for (auto& pair : moveLoc)
+    for (auto& netName : cell2nets[pair.first]) {
+      affectedNets.insert(netName);
+    }
   for (auto& netName : affectedNets) {
     space.nets[netName]->reroute(conf);
   }
