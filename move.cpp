@@ -5,7 +5,7 @@
 const int INF = 0x3f3f3f3f;
 namespace rt {
 
-void Move::init() {
+Move::Move(Space& space, cf::Config& conf) : space(space), conf(conf) {
   for (auto& cell : space.chip.cellInss) {
     cell2nets.insert({cell.second.insName, rt::stringset()});
   }
@@ -15,7 +15,9 @@ void Move::init() {
     net2neighbors.insert({netName, rt::stringset()});
     for (auto& pin : net.second.pins) {
       auto& cellName = pin[0];
+      // Map the cell to the set of nets to which it belongs
       cell2nets[cellName].insert(netName);
+      // Map the net to the set of its contained cells
       net2cells[netName].insert(cellName);
     }
   }
@@ -24,14 +26,16 @@ void Move::init() {
       for (const std::string& net2 : netSet.second)
         if (net1 != net2) {
           auto iter = shareCells.find(stringpair(net1, net2));
-          if (iter != shareCells.end()) {
-            iter->second = 1;
+          // Map net pair to the number of cells in common
+          if (iter == shareCells.end()) {
+            shareCells.insert({stringpair(net1, net2), 1});
+            // Map the net to neighbor nets (contain cells in common)
             net2neighbors[net1].insert(net2);
           } else {
             iter->second += 1;
           }
         }
-}
+};
 
 std::pair<T2, T2> Move::boundingBox(const std::string& netName,
                                     const std::string& exCellName) {
@@ -126,6 +130,8 @@ void Move::bigStep() {
     }
   }
 }
+
+void Move::smallStep() {}
 
 void Move::netMove(int direction) {
   std::map<std::string, int> center;
