@@ -290,6 +290,17 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   auto move = [&](const T3 a, int k) {
     return T3{a[0] + dx[k], a[1] + dy[k], a[2] + dz[k]};
   };
+  auto legal = [&](const T3 a) {
+    if (a[2] < 1 || a[2] > space.chip.numLayer)
+      return false;
+    if (basics.layer != "NoCstr" 
+      && a[2] < space.chip.layerName2Idx[basics.layer])
+      return false;
+    return a[0] >= space.chip.gGridBoundaryIdx[0]
+      && a[0] <= space.chip.gGridBoundaryIdx[2]
+      && a[1] >= space.chip.gGridBoundaryIdx[1]
+      && a[1] <= space.chip.gGridBoundaryIdx[2];
+  };
 
   int oppDir = lastDir ^ 1;
   passed.push_back(a);
@@ -327,14 +338,17 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
     }
   };
 
-  for (int i = 0; i < 3; i++)
-    prepareCandidate(i);
+  if (space.chip.layers[a[2]].routingDir == db::H)
+    prepareCandidate(0);
+  else
+    prepareCandidate(1);
+  prepareCandidate(2);
   
   std::vector< std::pair<int, double> > toSort, order;
 
   // First, try candidates in better
   for (auto x : better) {
-    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+    if (legal(move(a, x)))
       toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
   }
   std::sort(toSort.begin(), toSort.end(), 
@@ -347,7 +361,7 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   toSort.clear();
   // Then, try candidates in worse
   for (auto x : worse) {
-    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+    if (legal(move(a, x)))
       toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
   }  
   std::sort(toSort.begin(), toSort.end(), 
@@ -384,6 +398,19 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   auto move = [&](const T3 a, int k) {
     return T3{a[0] + dx[k], a[1] + dy[k], a[2] + dz[k]};
   };
+
+  auto legal = [&](const T3 a) {
+    if (a[2] < 1 || a[2] > space.chip.numLayer)
+      return false;
+    if (basics.layer != "NoCstr" 
+      && a[2] < space.chip.layerName2Idx[basics.layer])
+      return false;
+    return a[0] >= space.chip.gGridBoundaryIdx[0]
+      && a[0] <= space.chip.gGridBoundaryIdx[2]
+      && a[1] >= space.chip.gGridBoundaryIdx[1]
+      && a[1] <= space.chip.gGridBoundaryIdx[2];
+  };
+
   int oppDir = lastDir ^ 1;
 
   int ida{_addNode(a)};
@@ -417,8 +444,11 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
     }
   };
 
-  for (int i = 0; i < 3; i++)
-    prepareCandidate(i);
+  if (space.chip.layers[a[2]].routingDir == db::H)
+    prepareCandidate(0);
+  else
+    prepareCandidate(1);
+  prepareCandidate(2);
   
 
   std::vector< std::pair<int, double> > toSort;
@@ -426,7 +456,7 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
 
   // First, try candidates in better
   for (auto x : better) {
-    if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+    if (legal(move(a, x)))
       toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
   }
   std::sort(toSort.begin(), toSort.end(), 
@@ -441,7 +471,7 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   else {
     toSort.clear();
     for (auto x : worse) {
-      if (move(a, x)[2] >= space.chip.layerName2Idx[basics.layer])
+      if (legal(move(a, x)))
         toSort.push_back(std::make_pair(x, _estCost(move(a, x))));
     }  
     std::sort(toSort.begin(), toSort.end(), 
