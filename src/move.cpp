@@ -119,6 +119,7 @@ T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
 }
 
 void Move::bigStep(std::string cellName) {
+  // big step's optimal region must be in legal region, no need to check
   auto region = optimalRegion(cellName);
   T2 bestLoc = computeBestCongestLoc(cellName, region, 1.0);
 
@@ -132,9 +133,13 @@ void Move::bigStep(std::string cellName) {
 
 void Move::smallStep(std::string cellName) {
   auto& cell = space.cellInss[cellName];
-  T2 bestLoc = computeBestCongestLoc(
-      cellName, std::make_pair(T2{cell.rowIdx - 1, cell.rowIdx + 1},
-                               T2{cell.colIdx - 1, cell.colIdx + 1}));
+  // need to check if small move region reach out legal region
+  int lx = std::max(cell.rowIdx - 1, space.chip.gGridBoundaryIdx[0]);
+  int ux = std::min(cell.rowIdx + 1, space.chip.gGridBoundaryIdx[1]);
+  int ly = std::max(cell.colIdx - 1, space.chip.gGridBoundaryIdx[2]);
+  int uy = std::min(cell.colIdx + 1, space.chip.gGridBoundaryIdx[3]);
+  T2 bestLoc =
+      computeBestCongestLoc(cellName, std::make_pair(T2{lx, ux}, T2{ly, uy}));
   if (bestLoc != T2{space.cellInss[cellName]}) {
     space._moveCell(cellName, bestLoc);
     for (auto& netName : cell2nets[cellName]) {
@@ -232,14 +237,26 @@ void Move::netMove(int direction) {
       if (cand < middle) l = std::max(l, cand);
     }
     T2 bestLoc;
-    if (direction == 0)
+    if (direction == 0) {
+      if (l > space.chip.gGridBoundaryIdx[1] ||
+          r < space.chip.gGridBoundaryIdx[0])
+        continue;
+      int lx = std::max(l, space.chip.gGridBoundaryIdx[0]);
+      int ux = std::min(r, space.chip.gGridBoundaryIdx[1]);
       bestLoc = computeBestCongestLoc(
-          cellName, std::make_pair(T2{l, r}, T2{cell.colIdx, cell.colIdx}),
+          cellName, std::make_pair(T2{lx, ux}, T2{cell.colIdx, cell.colIdx}),
           1.0);
-    else
+    } else {
+      if (l > space.chip.gGridBoundaryIdx[3] ||
+          r < space.chip.gGridBoundaryIdx[2])
+        continue;
+      int ly = std::max(l, space.chip.gGridBoundaryIdx[2]);
+      int uy = std::min(r, space.chip.gGridBoundaryIdx[3]);
       bestLoc = computeBestCongestLoc(
-          cellName, std::make_pair(T2{cell.rowIdx, cell.rowIdx}, T2{l, r}),
+          cellName, std::make_pair(T2{cell.rowIdx, cell.rowIdx}, T2{ly, uy}),
           1.0);
+    }
+
     if (bestLoc != T2{cell}) moveLoc.insert({cellName, bestLoc});
   }
   stringset calibratedCell2Move;
