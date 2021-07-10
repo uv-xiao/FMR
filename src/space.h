@@ -65,6 +65,9 @@ class Space {
   Space() = delete;
   // build a space with given chip
   Space(db::Chip &chip);
+  stringset unsavedCells;
+  stringset unsavedNets;
+  void writeBack();
 };
 
 }  // namespace rt

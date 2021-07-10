@@ -3,7 +3,7 @@
 #include "types.h"
 #include "parser.h"
 #include "config.h"
-#include "flute/flute.h"
+#include "../flute/flute.h"
 
 
 #include <vector>
@@ -96,16 +96,16 @@ private:
   int _getCenter();
 
   void _optimize();
-  void _checkLegality();
+  bool _checkLegality();
 
   double _estCost(const T3 a);
   bool _simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
                        const int lastDir = -1);
   void _simpleRoute2Pins(const T3 a, const T3 b, const int lastDir = -1);
-  void _simpleRoute(cf::Config &config);
+  bool _simpleRoute(cf::Config &config, bool dfs = false);
   
-  void _aStarRoute2Pins(const T3 &a, const T3 &b);
-  void _aStarRoute(cf::Config &config);
+  bool _aStarRoute2Pins(const T3 &a, const T3 &b);
+  bool _aStarRoute(cf::Config &config);
   
   void _removeEdgeFromGrid(T3 from, T3 to);
   void _addEdge2Grid(T3 from, T3 to);
@@ -130,8 +130,10 @@ public:
   
   void cleanAll();
   void modifyCells();
-  void route(cf::Config &config);
-  void reroute(cf::Config &config);
+  bool route(cf::Config &config, bool dfs = false);
+  bool reroute(cf::Config &config, bool dfs = false);
+
+  void writeBack();
 };
 
 } // namespace rt

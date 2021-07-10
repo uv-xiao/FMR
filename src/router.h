@@ -18,7 +18,7 @@ public:
   Router() = delete;
   Router(db::Chip &chip);
   void run(cf::Config);
-  void print(FILE *f);
+  void print(FILE* f);
   ~Router();
 };
 

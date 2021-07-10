@@ -6,9 +6,9 @@ int main(int argc, char **argv) {
   assert(argc >= 2 && "At least 1 arguments as input, stdout as default output");
   db::Chip initialChip;
   db::parse(initialChip, argv[1]);
-
   rt::Router router{initialChip};
-  router.run(cf::Config("./config.json"));
+  cf::Config("config.json");
+  router.run(cf::Config("config.json"));
 
   if (argc == 2) router.print(stdout);
   else {

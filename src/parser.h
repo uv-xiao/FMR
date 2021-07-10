@@ -114,6 +114,15 @@ struct Route {
         eColIdx(eColIdx),
         eLayIdx(eLayIdx),
         netName(netName) {}
+  Route(rt::T3 s, rt::T3 e, std::string netName): netName(netName) {
+    sRowIdx = std::get<0>(s);
+    sColIdx = std::get<1>(s);
+    sLayIdx = std::get<2>(s);
+
+    eRowIdx = std::get<0>(e);
+    eColIdx = std::get<1>(e);
+    eLayIdx = std::get<2>(e);
+  }
 };
 
 struct Chip {

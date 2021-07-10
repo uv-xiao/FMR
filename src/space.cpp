@@ -7,8 +7,8 @@
 namespace rt {
 
 Space::Space(db::Chip &chip) : chip(chip) {
-  _prepareNetsFromChip();
   _prepareCells();
+  _prepareNetsFromChip();
 }
 
 void Space::_prepareCells() {
@@ -16,7 +16,6 @@ void Space::_prepareCells() {
 
   // store cell instances from chip
   cellInss = chip.cellInss;
-
   // add blockage demands to cell demands
   for (auto &entry : cellInss) {
     auto &cell = entry.second;
@@ -106,6 +105,9 @@ void Space::_moveCell(std::string cellName, T2 to) {
   }
   cell.rowIdx = std::get<0>(to);
   cell.colIdx = std::get<1>(to);
+
+  unsavedCells.insert(cellName);
+  std::cout << "move cell " << cellName << " to (" << cell.rowIdx << ", " << cell.colIdx << ")" << std::endl;
 }
 
 void Space::_addDemandOnGrid(const T3 &b, int delta) {
@@ -140,6 +142,17 @@ int Space::_getSupplyOnGrid(const T3 &b) {
   auto ptr = chip.pos2SupplyDelta.find(b);
   int delta = (ptr != chip.pos2SupplyDelta.end()) ? ptr->second : 0;
   return chip.layers[std::get<2>(b)].defaultSupply + delta;
+}
+
+void Space::writeBack() {
+  for (auto cellName: unsavedCells) {
+    chip.cellInss[cellName] = cellInss[cellName];
+  }
+  for (auto netName: unsavedNets) {
+    nets[netName]->writeBack();
+  }
+  unsavedCells.clear();
+  unsavedNets.clear();
 }
 
 }  // namespace rt
