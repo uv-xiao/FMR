@@ -130,8 +130,8 @@ public:
   
   void cleanAll();
   void modifyCells();
-  bool route(cf::Config &config, bool dfs = false);
-  bool reroute(cf::Config &config, bool dfs = false);
+  bool route(cf::Config &config, bool dfs = true);
+  bool reroute(cf::Config &config, bool dfs = true);
 
   void writeBack();
 };

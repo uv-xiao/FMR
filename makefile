@@ -9,11 +9,11 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))
 
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< -g
 
 lib: flute
 	mkdir -p $(BUILDDIR)
-	cd flute; gcc -c *.c; mv *.o ../build
+	cd flute; gcc -g -c *.c; mv *.o ../build
 
 clean:
 	rm -rf $(BUILDDIR)
@@ -21,5 +21,5 @@ clean:
 
 all: $(OBJECTS) $(MAIN)
 	mkdir -p $(BINDIR)
-	g++ build/*.o -o $(BINDIR)/a.out
+	g++ build/*.o -o $(BINDIR)/a.out -g
 .PHONY: clean all lib

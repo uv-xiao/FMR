@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <climits>
 #include <deque>
+#include <list>
 
 #include "space.h"
 
@@ -413,12 +414,16 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   int oppDir = lastDir ^ 1;
 
   int ida{_addNode(a)};
+  std::cerr << "add node: " << a[0] << ", " << a[1] << ", " << a[2] << std::endl;
   if (lastDir != -1) {
     int idLast{_getNodeIdx(move(a, oppDir))};
     _addEdge(idLast, ida);
   }
 
-  if (a == b) return;
+  if (a == b) {
+    std::cerr << "arrived" << std::endl;
+    return;
+  }
 
   std::vector<int> better, worse;
 
@@ -464,59 +469,88 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
     for (auto x : better)
       std::cerr << x << " ";
     std::cerr << std::endl;
-
-    // First, try candidates in better
-    for (auto x : better) {
-      if (legal(move(a, x)))
-        toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
-    }
-    if (!toSort.size()) goto BetterFail;
+  }
+  // First, try candidates in better
+  for (auto x : better) {
+    if (legal(move(a, x)))
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
+  }
+  if (toSort.size()) {
     std::sort(toSort.begin(), toSort.end(),
               [&](const T2 &a, const T2 &b) { 
                 return a.second < b.second; 
               });
               
     bestInBetter = toSort[0];
-
     if (bestInBetter.second < violationCost) {
       _simpleRoute2Pins(move(a, bestInBetter.first), b, bestInBetter.first);
-      goto Exit;
+      return;
     }
-    else
-      goto BetterFail;
   }
-  else {
-  BetterFail:
-    std::cerr << "betters failed" << std::endl;
-    toSort.clear();
-    if (worse.size()) {
-      for (auto x : worse) {
-        if (legal(move(a, x)))
-          toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
-      }
-      
-      if (!toSort.size()) goto WorseFail;
-      std::sort(toSort.begin(), toSort.end(),
-                [&](const T2 &a, const T2 &b) { 
-                  return a.second < b.second; 
-                });
-      bestInWorse = toSort[0];
 
-      if (bestInWorse.second >= violationCost)
-        goto WorseFail;
-      else {
-        _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
-        goto Exit;
-      }
+  std::cerr << "betters failed" << std::endl;
+  toSort.clear();
+  for (auto x : worse) {
+    if (legal(move(a, x)))
+      toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
+  }
+  
+  if (toSort.size()) {
+    std::sort(toSort.begin(), toSort.end(),
+              [&](const T2 &a, const T2 &b) { 
+                return a.second < b.second; 
+              });
+    bestInWorse = toSort[0];
+
+    if (bestInWorse.second >= violationCost) {
+      std::cerr << "Have to go back at (" << a[0] << ", " << a[1] << ", "
+                << a[2] << ") " << oppDir << std::endl;
+      _simpleRoute2Pins(move(a, oppDir), b, oppDir);
+      return;
+    }
+    else {
+      _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
+      return;
     }
   }
-  WorseFail:
-  std::cerr << "Have to go back at (" << a[0] << ", " << a[1] << ", "
-            << a[2] << ") " << oppDir << std::endl;
-  _simpleRoute2Pins(move(a, oppDir), b, oppDir);
-  
-  Exit:
-  return;
+}
+
+
+using MST = std::vector<std::pair<int, int>>;
+
+MST Prim(int n, int xs[], int ys[]) {
+  MST ret;
+  std::list<int> tree, waiting;
+  tree.push_back(0);
+  for (int i = 1; i < n; i++)
+    waiting.push_back(i);
+    
+  auto Distance = [&](const int &a, const int &b) {
+    return (xs[a] > xs[b] ? xs[a] - xs[b] : xs[b] - xs[a]) 
+        + (ys[a] > ys[b] ? ys[a] - ys[b] : ys[b] - ys[a]);
+  };
+  for (int i = 1; i < n; i++) {
+    int min = std::numeric_limits<int>::max();
+    std::pair<int, int> candi{-1, -1};
+    auto toErase = waiting.begin();
+
+    for (auto it = waiting.begin(); it != waiting.end(); it++) {
+      int x = *it;
+      for (auto y : tree) {
+        int d = Distance(x, y);
+        if (d < min) {
+          min = d;
+          candi = std::make_pair(y, x);
+          toErase = it;
+        }
+      }
+    }
+    ret.push_back(candi);
+    tree.push_back(candi.second);
+    waiting.erase(toErase);
+  }
+
+  return ret;
 }
 
 bool Net::_simpleRoute(cf::Config &config, bool dfs) {
@@ -587,6 +621,10 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     routeNodes[id] = T3{t3[0], t3[1], z};
   };
 
+  std::sort(pins.begin(), pins.end());
+  auto last = std::unique(pins.begin(), pins.end());
+  pins.erase(last, pins.end());
+
   for (auto pin : pins) {
     xs[pt_cnt] = pin[0];
     ys[pt_cnt] = pin[1];
@@ -595,14 +633,25 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     addLoc(pin[0], pin[1]);
     addLoc2Node(pin[0], pin[1], id);
   }
-
-  assert(degree >= 2 && "#pin of a net >= 2");
+  
+  degree = pt_cnt;
+  if (degree < 2) {
+    std::cerr << "less than 2 pins" << std::endl;
+    return true;
+  }
 
   std::cerr << "Pins: " << std::endl;
   for (auto pin : pins) {
     std::cerr << "\t" << pin[0] << " " << pin[1] << " " << pin[2] << std::endl;
   }
 
+  MST mst = Prim(degree, xs, ys);
+
+  for (auto pr : mst) 
+    addEdge({xs[pr.first], ys[pr.first]}, {xs[pr.second], ys[pr.second]});
+
+  /*
+  std::cerr << "start flute" << std::endl;
   Tree fluteTree = flute(degree, xs, ys, ACCURACY);
   std::cerr << "degree: " << degree << std::endl;
   for (int i = 0; i < degree * 2 - 2; i++) {
@@ -627,6 +676,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     }
     addEdge(fluteEdge[0], fluteEdge[1]);
   }
+  */
 
   if (newLocs.size()) {
     std::cerr << "NewLocs: " << std::endl;
@@ -636,7 +686,6 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     }
   }
 
-  
   bool someChange = true;
   while (someChange) {
     someChange = false;
@@ -714,6 +763,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
           << ") -> (" << t2_.first << ", " << t2_.second << ", " << highest[y] << ")" << std::endl;
           _simpleRoute2Pins(T3{t2.first, t2.second, highest[i]},
                             T3{t2_.first, t2_.second, highest[y]});
+          std::cerr << "SimpleRoute2Pins succeed" << std::endl;
         }
       }
   }
