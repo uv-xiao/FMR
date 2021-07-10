@@ -3,3 +3,5 @@ case4.txt
 case5.txt
 case6.txt
 evaluator.tar.gz
+build/
+bin/
