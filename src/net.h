@@ -98,7 +98,7 @@ private:
   void _optimize();
   bool _checkLegality();
 
-  double _estCost(const T3 a);
+  double _estCost(const T3 a, const int &d);
   bool _simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
                        const int lastDir = -1);
   void _simpleRoute2Pins(const T3 a, const T3 b, const int lastDir = -1);

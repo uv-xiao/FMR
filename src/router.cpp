@@ -28,7 +28,7 @@ void Router::run(cf::Config config) {
 }
 
 void Router::print(FILE* f) {
-  fprintf(f, "NumMovedCellInst %d\n", space.movedCells.size());
+  fprintf(f, "NumMovedCellInst %d\n", (int)space.movedCells.size());
   for (auto& cell : chip.cellInss) {
     fprintf(f, "CellInst %s %d %d\n", cell.first.c_str(), cell.second.rowIdx,
             cell.second.colIdx);
