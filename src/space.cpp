@@ -37,7 +37,18 @@ void Space::_prepareCells() {
       if (fixedCells.find(cellName) == fixedCells.end()) {
         Cell2voltageArea.insert({cellName, area});
       }
+  std::cerr << "fixed cell number = " << fixedCells.size();
+  for (auto &cell : fixedCells) std::cerr << " " << cell;
+  std::cerr << std::endl;
 
+  std::cerr << "movable cell number = " << movableCells.size();
+  for (auto &cell : movableCells) std::cerr << " " << cell;
+  std::cerr << std::endl;
+
+  std::cerr << "movable cell in voltage area number = "
+            << Cell2voltageArea.size();
+  for (auto &cell : Cell2voltageArea) std::cerr << " " << cell.first;
+  std::cerr << std::endl;
   /*
     // add net demands to cell demands
     // store nets, which pass a cell
@@ -107,7 +118,8 @@ void Space::_moveCell(std::string cellName, T2 to) {
   cell.colIdx = std::get<1>(to);
 
   unsavedCells.insert(cellName);
-  std::cout << "move cell " << cellName << " to (" << cell.rowIdx << ", " << cell.colIdx << ")" << std::endl;
+  std::cout << "move cell " << cellName << " to (" << cell.rowIdx << ", "
+            << cell.colIdx << ")" << std::endl;
 }
 
 void Space::_addDemandOnGrid(const T3 &b, int delta) {
@@ -145,10 +157,10 @@ int Space::_getSupplyOnGrid(const T3 &b) {
 }
 
 void Space::writeBack() {
-  for (auto cellName: unsavedCells) {
+  for (auto cellName : unsavedCells) {
     chip.cellInss[cellName] = cellInss[cellName];
   }
-  for (auto netName: unsavedNets) {
+  for (auto netName : unsavedNets) {
     nets[netName]->writeBack();
   }
   unsavedCells.clear();

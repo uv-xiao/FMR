@@ -53,6 +53,9 @@ std::pair<T2, T2> Move::boundingBox(const std::string& netName,
     min_y = std::min(min_y, cell.colIdx);
     max_y = std::max(max_y, cell.colIdx);
   }
+  std::cerr << "net " << netName << "'s bounding box w/o " << exCellName
+            << " is (" << min_x << "-" << min_y << ", " << max_x << "-" << max_y
+            << ")" << std::endl;
   return std::make_pair(T2{min_x, max_x}, T2{min_y, max_y});
 }
 
@@ -76,6 +79,10 @@ std::pair<T2, T2> Move::optimalRegion(const std::string& cellName) {
   std::pair<T2, T2> region =
       std::make_pair(T2{xs[xs.size() / 2 - 1], xs[xs.size() / 2]},
                      T2{ys[ys.size() / 2 - 1], ys[ys.size() / 2]});
+  std::cerr << "cell " << cellName << "'s optimal region is ("
+            << xs[xs.size() / 2 - 1] << "-" << ys[ys.size() / 2 - 1] << ", "
+            << xs[xs.size() / 2] << "-" << ys[ys.size() / 2] << ")"
+            << std::endl;
   return region;
 }
 
@@ -119,6 +126,10 @@ T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
 }
 
 void Move::bigStep(std::string cellName) {
+  std::cerr << "try to move cell " << cellName << "("
+            << space.chip.cellInss[cellName].rowIdx << ", "
+            << space.chip.cellInss[cellName].colIdx << ") with big step"
+            << std::endl;
   // big step's optimal region must be in legal region, no need to check
   auto region = optimalRegion(cellName);
   T2 bestLoc = computeBestCongestLoc(cellName, region, 1.0);
@@ -132,6 +143,10 @@ void Move::bigStep(std::string cellName) {
 }
 
 void Move::smallStep(std::string cellName) {
+  std::cerr << "try to move cell " << cellName << "("
+            << space.chip.cellInss[cellName].rowIdx << ", "
+            << space.chip.cellInss[cellName].colIdx << ") with small step"
+            << std::endl;
   auto& cell = space.cellInss[cellName];
   // need to check if small move region reach out legal region
   int lx = std::max(cell.rowIdx - 1, space.chip.gGridBoundaryIdx[0]);

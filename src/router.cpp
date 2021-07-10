@@ -7,22 +7,25 @@ Router::Router(db::Chip& chip) : chip(chip), space(chip) {}
 Router::~Router() {}
 
 void Router::run(cf::Config config) {
+  srand(0);
   Move move(space, config);
   while (space.movedCells.size() < chip.maxCellMove) {
+    std::cerr << std::endl << std::endl;
     int method_selector = rand() % 10;
     if (method_selector < 7) {
       // P(big step) = 7/10
       int cellSelector = rand() % space.movableCells.size();
       move.bigStep(space.movableCells[cellSelector]);
-    } else if (method_selector < 9) {
-      // P(small step) = 2/10
-      int cellSelector = rand() % space.movableCells.size();
-      move.smallStep(space.movableCells[cellSelector]);
-    } else {
-      // P(net move) = 1/10
-      int directionSelector = rand() % 2;
-      move.netMove(directionSelector);
-    }
+    } 
+    // else if (method_selector < 9) {
+    //   // P(small step) = 2/10
+    //   int cellSelector = rand() % space.movableCells.size();
+    //   move.smallStep(space.movableCells[cellSelector]);
+    // } else {
+    //   // P(net move) = 1/10
+    //   int directionSelector = rand() % 2;
+    //   move.netMove(directionSelector);
+    // }
   }
   space.writeBack();
 }
