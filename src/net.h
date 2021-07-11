@@ -100,8 +100,8 @@ private:
 
   double _estCost(const T3 a, const int &d);
   bool _simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
-                       const int lastDir = -1);
-  void _simpleRoute2Pins(const T3 a, const T3 b, const int lastDir = -1);
+                       std::set<T3> &reached, const int lastDir = -1);
+  void _simpleRoute2Pins(const T3 a, const T3 b,  const int lastDir = -1);
   bool _simpleRoute(cf::Config &config, bool dfs = false);
   
   bool _aStarRoute2Pins(const T3 &a, const T3 &b);

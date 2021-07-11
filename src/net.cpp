@@ -281,7 +281,7 @@ double Net::_estCost(const T3 a, const int &d) {
 }
 
 bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
-                          const int lastDir) {
+                          std::set<T3> &reached, const int lastDir) {
   static const int dx[6] = {1, -1, 0, 0, 0, 0}, dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
 
@@ -290,6 +290,8 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   };
   auto legal = [&](const T3 a) {
     if (a[2] < 1 || a[2] > space.chip.numLayer) return false;
+    if (reached.find(a) != reached.end())
+      return false;
     return a[0] >= space.chip.gGridBoundaryIdx[0] &&
            a[0] <= space.chip.gGridBoundaryIdx[2] &&
            a[1] >= space.chip.gGridBoundaryIdx[1] &&
@@ -300,6 +302,8 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
 
   int oppDir = lastDir ^ 1;
   passed.push_back(a);
+  reached.insert(a);
+
   if (a == b) {
     int i = 0, last = -1;
     for (auto x : passed) {
@@ -376,11 +380,13 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   }
 
   for (auto x : order) {
-    if (_simpleRouteDFS(move(a, x.first), b, passed, x.first)) 
+    if (_simpleRouteDFS(move(a, x.first), b, passed, reached, x.first)) 
       return true;
   }
 
   passed.pop_back();
+  reached.erase(a);
+
   return false;
 }
 
@@ -735,8 +741,9 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     for (int i = 0; i + 1 < layers.size(); i++) {
       if (dfs) {
         std::vector<T3> passed;
+        std::set<T3> reached;
         if (!_simpleRouteDFS(T3{t2.first, t2.second, layers[i]},
-                             T3{t2.first, t2.second, layers[i + 1]}, passed))
+                             T3{t2.first, t2.second, layers[i + 1]}, passed, reached))
           return false;
       } else {
         std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second << ", " << layers[i]
@@ -755,8 +762,9 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
         auto t2_ = id2Loc[y];
         if (dfs) {
           std::vector<T3> passed;
+          std::set<T3> reached;
           if (!_simpleRouteDFS(T3{t2.first, t2.second, highest[i]},
-                               T3{t2_.first, t2_.second, highest[y]}, passed))
+                               T3{t2_.first, t2_.second, highest[y]}, passed, reached))
             return false;
         } else {
           std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second << ", " << highest[i]
