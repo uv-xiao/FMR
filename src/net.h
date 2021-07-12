@@ -53,6 +53,8 @@ struct Edge {
 
 
 class Net {
+friend class Move;
+
 private:
 
   const double violationCost = 1e7;

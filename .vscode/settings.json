@@ -60,6 +60,10 @@
     "list": "cpp",
     "unordered_set": "cpp",
     "mutex": "cpp",
-    "thread": "cpp"
+    "thread": "cpp",
+    "strstream": "cpp",
+    "complex": "cpp",
+    "iomanip": "cpp",
+    "cfenv": "cpp"
   }
 }

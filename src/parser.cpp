@@ -144,7 +144,7 @@ void parse(Chip &chip, const char *dir = nullptr) {
     else if (tokens[0] == "GGrids") {
       chip.voltageAreas.back().gGridCount = std::stoi(tokens[1]);
     } 
-    else if (tokens[0] == "Instances") {
+    else if (tokens[0].find("Instance") != std::string::npos) {
       chip.voltageAreas.back().insCount = std::stoi(tokens[1]);
     } 
     else if (tokens.size() == 2) {

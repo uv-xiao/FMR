@@ -39,13 +39,13 @@ Move::Move(Space& space, cf::Config& conf) : space(space), conf(conf) {
 
 std::pair<T2, T2> Move::boundingBox(const std::string& netName,
                                     const std::string& exCellName) {
-  auto net = space.chip.nets[netName];
+  auto& net = space.chip.nets[netName];
   int min_x = INF, min_y = INF, max_x = 0, max_y = 0;
   for (auto& pin : net.pins) {
     auto cellName = pin[0];
     if (cellName == exCellName) continue;
 
-    auto cell = space.chip.cellInss[cellName];
+    auto& cell = space.cellInss[cellName];
 
     min_x = std::min(min_x, cell.rowIdx);
     max_x = std::max(max_x, cell.rowIdx);
@@ -125,33 +125,49 @@ T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
   return Best_loc;
 }
 
-void Move::bigStep(std::string cellName) {
+void Move::Rollback(std::map<std::string, T2> cell2Move, stringset netNames) {
+  for (auto& cell : cell2Move) {
+    space._moveCell(cell.first, cell.second);
+  }
+  for (auto& netName : netNames) {
+    space.nets[netName]->reroute(conf);
+  }
+}
+
+bool Move::bigStep(std::string cellName) {
   std::cerr << "try to move cell " << cellName << "("
-            << space.chip.cellInss[cellName].rowIdx << ", "
-            << space.chip.cellInss[cellName].colIdx << ") with big step"
+            << space.cellInss[cellName].rowIdx << ", "
+            << space.cellInss[cellName].colIdx << ") with big step"
             << std::endl;
   // big step's optimal region must be in legal region, no need to check
-  auto region = optimalRegion(cellName);
-  T2 bestLoc = computeBestCongestLoc(cellName, region, 1.0);
-
-  if (bestLoc != T2{space.cellInss[cellName]}) {
+  T2 originLoc = space.cellInss[cellName];
+  T2 bestLoc = computeBestCongestLoc(cellName, optimalRegion(cellName), 1.0);
+  if (bestLoc != originLoc) {
+    std::map<std::string, T2> rollbackCells({{cellName, originLoc}});
+    stringset rollbackNets;
     space._moveCell(cellName, bestLoc);
     for (auto& netName : cell2nets[cellName]) {
-      space.nets[netName]->reroute(conf);
+      rollbackNets.insert(netName);
+      if (!space.nets[netName]->reroute(conf)) {
+        Rollback(rollbackCells, rollbackNets);
+        return false;
+      }
     }
   }
+
+  return true;
 }
 
 void Move::smallStep(std::string cellName) {
   std::cerr << "try to move cell " << cellName << "("
-            << space.chip.cellInss[cellName].rowIdx << ", "
-            << space.chip.cellInss[cellName].colIdx << ") with small step"
+            << space.cellInss[cellName].rowIdx << ", "
+            << space.cellInss[cellName].colIdx << ") with small step"
             << std::endl;
   auto& cell = space.cellInss[cellName];
   // need to check if small move region reach out legal region
   int lx = std::max(cell.rowIdx - 1, space.chip.gGridBoundaryIdx[0]);
-  int ux = std::min(cell.rowIdx + 1, space.chip.gGridBoundaryIdx[1]);
-  int ly = std::max(cell.colIdx - 1, space.chip.gGridBoundaryIdx[2]);
+  int ux = std::min(cell.rowIdx + 1, space.chip.gGridBoundaryIdx[2]);
+  int ly = std::max(cell.colIdx - 1, space.chip.gGridBoundaryIdx[1]);
   int uy = std::min(cell.colIdx + 1, space.chip.gGridBoundaryIdx[3]);
   T2 bestLoc =
       computeBestCongestLoc(cellName, std::make_pair(T2{lx, ux}, T2{ly, uy}));
@@ -203,7 +219,7 @@ void Move::netMove(int direction) {
   auto computeBestNet2Move = [&](int max_n, double area_proportion) {
     stringset net2Move;
     auto& bound = space.chip.gGridBoundaryIdx;
-    int area = 0, max_area = (bound[1] - bound[0]) * (bound[3] - bound[2]) *
+    int area = 0, max_area = (bound[2] - bound[0]) * (bound[3] - bound[1]) *
                              area_proportion;
     while (net2Move.size() < max_n) {
       auto netName = bestCongestNetQueue.top().second;
@@ -253,19 +269,19 @@ void Move::netMove(int direction) {
     }
     T2 bestLoc;
     if (direction == 0) {
-      if (l > space.chip.gGridBoundaryIdx[1] ||
+      if (l > space.chip.gGridBoundaryIdx[2] ||
           r < space.chip.gGridBoundaryIdx[0])
         continue;
       int lx = std::max(l, space.chip.gGridBoundaryIdx[0]);
-      int ux = std::min(r, space.chip.gGridBoundaryIdx[1]);
+      int ux = std::min(r, space.chip.gGridBoundaryIdx[2]);
       bestLoc = computeBestCongestLoc(
           cellName, std::make_pair(T2{lx, ux}, T2{cell.colIdx, cell.colIdx}),
           1.0);
     } else {
       if (l > space.chip.gGridBoundaryIdx[3] ||
-          r < space.chip.gGridBoundaryIdx[2])
+          r < space.chip.gGridBoundaryIdx[1])
         continue;
-      int ly = std::max(l, space.chip.gGridBoundaryIdx[2]);
+      int ly = std::max(l, space.chip.gGridBoundaryIdx[1]);
       int uy = std::min(r, space.chip.gGridBoundaryIdx[3]);
       bestLoc = computeBestCongestLoc(
           cellName, std::make_pair(T2{cell.rowIdx, cell.rowIdx}, T2{ly, uy}),

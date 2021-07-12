@@ -44,7 +44,7 @@ class Move {
 
   // move a cell to the best location of its optimal region,
   // and reroute impacted nets
-  void bigStep(std::string cellName);
+  bool bigStep(std::string cellName);
 
   // move a cell to the better location around its neighborhood
   // and reroute impacted nets
@@ -52,6 +52,8 @@ class Move {
 
   // move cells in several nets, and reroute all impacted nets
   void netMove(int direction);
+
+  void Rollback(std::map<std::string, T2> cell2Move, stringset netNames);
 };
 
 }  // namespace rt

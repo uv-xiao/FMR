@@ -282,6 +282,9 @@ double Net::_estCost(const T3 a, const int &d) {
 
 bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
                           std::set<T3> &reached, const int lastDir) {
+  std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
+            << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
+            << std::get<1>(b) << "," << std::get<2>(b) << ")" << std::endl;
   static const int dx[6] = {1, -1, 0, 0, 0, 0}, dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
 
@@ -290,14 +293,12 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   };
   auto legal = [&](const T3 a) {
     if (a[2] < 1 || a[2] > space.chip.numLayer) return false;
-    if (reached.find(a) != reached.end())
-      return false;
+    if (reached.find(a) != reached.end()) return false;
     return a[0] >= space.chip.gGridBoundaryIdx[0] &&
            a[0] <= space.chip.gGridBoundaryIdx[2] &&
            a[1] >= space.chip.gGridBoundaryIdx[1] &&
-           a[1] <= space.chip.gGridBoundaryIdx[2];
+           a[1] <= space.chip.gGridBoundaryIdx[3];
   };
-  
   assert(legal(a) && "Passed grid must be legal");
 
   int oppDir = lastDir ^ 1;
@@ -305,6 +306,7 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   reached.insert(a);
 
   if (a == b) {
+    std::cerr << "routing path found!" << std::endl;
     int i = 0, last = -1;
     for (auto x : passed) {
       int id{_addNode(x)};
@@ -329,25 +331,25 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
     }
   };
 
-  if (basics.layer == "NoCstr" || a[2] >= space.chip.layerName2Idx[basics.layer]) {
-
+  if (basics.layer == "NoCstr" ||
+      a[2] >= space.chip.layerName2Idx[basics.layer]) {
     if (space.chip.layers[a[2]].routingDir == db::H)
       prepareCandidate(0);
     else
       prepareCandidate(1);
   }
 
-  if ((basics.layer != "NoCstr" && a[2] < space.chip.layerName2Idx[basics.layer]) 
-      && ((a[0] != b[0]) || (a[1] != b[1])))
+  if ((basics.layer != "NoCstr" &&
+       a[2] < space.chip.layerName2Idx[basics.layer]) &&
+      ((a[0] != b[0]) || (a[1] != b[1])))
     better.push_back(4);
-  else
-  if ((a[0] == b[0] && a[1] != b[1] && a[2] % 2 == 1)
-      || (a[1] == b[1] && a[0] != b[0] && a[2] % 2 == 0)) {
+  else if ((a[0] == b[0] && a[1] != b[1] && a[2] % 2 == 1) ||
+           (a[1] == b[1] && a[0] != b[0] && a[2] % 2 == 0)) {
     better.push_back(4);
-    if (basics.layer == "NoCstr" || a[2] > space.chip.layerName2Idx[basics.layer])
-      better.push_back(5); 
-  }
-  else
+    if (basics.layer == "NoCstr" ||
+        a[2] > space.chip.layerName2Idx[basics.layer])
+      better.push_back(5);
+  } else
     prepareCandidate(2);
 
   std::vector<std::pair<int, double>> toSort, order;
@@ -358,35 +360,34 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
         toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
     }
     std::sort(toSort.begin(), toSort.end(),
-              [&](const T2 &a, const T2 &b) { 
-                return a.second < b.second; 
-              });
+              [&](const T2 &a, const T2 &b) { return a.second < b.second; });
     for (auto x : toSort)
       if (x.second < violationCost) order.push_back(x);
-    toSort.clear(); 
+    toSort.clear();
   }
-  
+
   if (worse.size()) {
     for (auto x : worse) {
       if (legal(move(a, x)))
         toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
     }
     std::sort(toSort.begin(), toSort.end(),
-              [&](const T2 &a, const T2 &b) {
-                  return a.second < b.second; 
-                });
+              [&](const T2 &a, const T2 &b) { return a.second < b.second; });
     for (auto x : toSort)
       if (x.second < violationCost) order.push_back(x);
   }
 
   for (auto x : order) {
-    if (_simpleRouteDFS(move(a, x.first), b, passed, reached, x.first)) 
+    if (_simpleRouteDFS(move(a, x.first), b, passed, reached, x.first))
       return true;
   }
 
   passed.pop_back();
   reached.erase(a);
-
+  std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
+            << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
+            << std::get<1>(b) << "," << std::get<2>(b) << ")"
+            << "return false" << std::endl;
   return false;
 }
 
@@ -396,10 +397,10 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
  * (0, 0, 1) : 4 , (0, 0, -1) : 5
  */
 void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
-  std::cout << "a = (" << a[0] << ", " << a[1] << ", " << a[2]
-            << ") b = (" << b[0] << ", " << b[1] << ", " << b[2]
-            << ") lastDir = " << lastDir << std::endl;
-  
+  std::cout << "a = (" << a[0] << ", " << a[1] << ", " << a[2] << ") b = ("
+            << b[0] << ", " << b[1] << ", " << b[2] << ") lastDir = " << lastDir
+            << std::endl;
+
   static const int dx[6] = {1, -1, 0, 0, 0, 0}, dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
 
@@ -412,7 +413,7 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
     return a[0] >= space.chip.gGridBoundaryIdx[0] &&
            a[0] <= space.chip.gGridBoundaryIdx[2] &&
            a[1] >= space.chip.gGridBoundaryIdx[1] &&
-           a[1] <= space.chip.gGridBoundaryIdx[2];
+           a[1] <= space.chip.gGridBoundaryIdx[3];
   };
 
   assert(legal(a) && "Passed grid must be legal");
@@ -420,7 +421,8 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   int oppDir = lastDir ^ 1;
 
   int ida{_addNode(a)};
-  std::cerr << "add node: " << a[0] << ", " << a[1] << ", " << a[2] << std::endl;
+  std::cerr << "add node: " << a[0] << ", " << a[1] << ", " << a[2]
+            << std::endl;
   if (lastDir != -1) {
     int idLast{_getNodeIdx(move(a, oppDir))};
     _addEdge(idLast, ida);
@@ -446,25 +448,25 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
     }
   };
 
-  if (basics.layer == "NoCstr" || a[2] >= space.chip.layerName2Idx[basics.layer]) {
-
+  if (basics.layer == "NoCstr" ||
+      a[2] >= space.chip.layerName2Idx[basics.layer]) {
     if (space.chip.layers[a[2]].routingDir == db::H)
       prepareCandidate(0);
     else
       prepareCandidate(1);
   }
 
-  if ((basics.layer != "NoCstr" && a[2] < space.chip.layerName2Idx[basics.layer]) 
-      && ((a[0] != b[0]) || (a[1] != b[1])))
+  if ((basics.layer != "NoCstr" &&
+       a[2] < space.chip.layerName2Idx[basics.layer]) &&
+      ((a[0] != b[0]) || (a[1] != b[1])))
     better.push_back(4);
-  else
-  if ((a[0] == b[0] && a[1] != b[1] && a[2] % 2 == 1)
-      || (a[1] == b[1] && a[0] != b[0] && a[2] % 2 == 0)) {
+  else if ((a[0] == b[0] && a[1] != b[1] && a[2] % 2 == 1) ||
+           (a[1] == b[1] && a[0] != b[0] && a[2] % 2 == 0)) {
     better.push_back(4);
-    if (basics.layer == "NoCstr" || a[2] > space.chip.layerName2Idx[basics.layer])
-      better.push_back(5); 
-  }
-  else
+    if (basics.layer == "NoCstr" ||
+        a[2] > space.chip.layerName2Idx[basics.layer])
+      better.push_back(5);
+  } else
     prepareCandidate(2);
 
   std::vector<std::pair<int, double>> toSort;
@@ -472,8 +474,7 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
 
   if (better.size()) {
     std::cerr << "betters: ";
-    for (auto x : better)
-      std::cerr << x << " ";
+    for (auto x : better) std::cerr << x << " ";
     std::cerr << std::endl;
   }
   // First, try candidates in better
@@ -483,10 +484,8 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   }
   if (toSort.size()) {
     std::sort(toSort.begin(), toSort.end(),
-              [&](const T2 &a, const T2 &b) { 
-                return a.second < b.second; 
-              });
-              
+              [&](const T2 &a, const T2 &b) { return a.second < b.second; });
+
     bestInBetter = toSort[0];
     if (bestInBetter.second < violationCost) {
       _simpleRoute2Pins(move(a, bestInBetter.first), b, bestInBetter.first);
@@ -500,12 +499,10 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
     if (legal(move(a, x)))
       toSort.push_back(std::make_pair(x, _estCost(move(a, x), x)));
   }
-  
+
   if (toSort.size()) {
     std::sort(toSort.begin(), toSort.end(),
-              [&](const T2 &a, const T2 &b) { 
-                return a.second < b.second; 
-              });
+              [&](const T2 &a, const T2 &b) { return a.second < b.second; });
     bestInWorse = toSort[0];
 
     if (bestInWorse.second >= violationCost) {
@@ -513,14 +510,12 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
                 << a[2] << ") " << oppDir << std::endl;
       _simpleRoute2Pins(move(a, oppDir), b, oppDir);
       return;
-    }
-    else {
+    } else {
       _simpleRoute2Pins(move(a, bestInWorse.first), b, bestInWorse.first);
       return;
     }
   }
 }
-
 
 using MST = std::vector<std::pair<int, int>>;
 
@@ -528,12 +523,11 @@ MST Prim(int n, int xs[], int ys[]) {
   MST ret;
   std::list<int> tree, waiting;
   tree.push_back(0);
-  for (int i = 1; i < n; i++)
-    waiting.push_back(i);
-    
+  for (int i = 1; i < n; i++) waiting.push_back(i);
+
   auto Distance = [&](const int &a, const int &b) {
-    return (xs[a] > xs[b] ? xs[a] - xs[b] : xs[b] - xs[a]) 
-        + (ys[a] > ys[b] ? ys[a] - ys[b] : ys[b] - ys[a]);
+    return (xs[a] > xs[b] ? xs[a] - xs[b] : xs[b] - xs[a]) +
+           (ys[a] > ys[b] ? ys[a] - ys[b] : ys[b] - ys[a]);
   };
   for (int i = 1; i < n; i++) {
     int min = std::numeric_limits<int>::max();
@@ -560,7 +554,7 @@ MST Prim(int n, int xs[], int ys[]) {
 }
 
 bool Net::_simpleRoute(cf::Config &config, bool dfs) {
-  std::cout <<"simpleRoute for " << basics.netName << std::endl;
+  std::cout << "simpleRoute for " << basics.netName << std::endl;
   std::vector<T3> pins(_getNetPins());
   std::map<T2, std::vector<int>> loc2RNode;
   std::map<int, T3> routeNodes;
@@ -618,7 +612,9 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
       append(loc2);
       locEdges[loc1].insert(loc2);
       locEdges[loc2].insert(loc1);
-      std::cerr << "Add edge: " << loc1 << " -> " << loc2 << std::endl;
+      // std::cerr << "Add edge: " << loc1 << " -> " << loc2 << std::endl;
+      std::cerr << "Add edge: (" << x1 << ", " << y1 << ") -> (" << x2 << ", "
+                << y2 << ")" << std::endl;
     }
   };
 
@@ -639,7 +635,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
     addLoc(pin[0], pin[1]);
     addLoc2Node(pin[0], pin[1], id);
   }
-  
+
   degree = pt_cnt;
   if (degree < 2) {
     std::cerr << "less than 2 pins" << std::endl;
@@ -653,7 +649,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
 
   MST mst = Prim(degree, xs, ys);
 
-  for (auto pr : mst) 
+  for (auto pr : mst)
     addEdge({xs[pr.first], ys[pr.first]}, {xs[pr.second], ys[pr.second]});
 
   /*
@@ -687,7 +683,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
   if (newLocs.size()) {
     std::cerr << "NewLocs: " << std::endl;
     for (auto loc : newLocs) {
-      std::cout << loc << " : " << std::get<0>(id2Loc[loc]) << ", " 
+      std::cout << loc << " : " << std::get<0>(id2Loc[loc]) << ", "
                 << std::get<1>(id2Loc[loc]) << std::endl;
     }
   }
@@ -743,11 +739,14 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
         std::vector<T3> passed;
         std::set<T3> reached;
         if (!_simpleRouteDFS(T3{t2.first, t2.second, layers[i]},
-                             T3{t2.first, t2.second, layers[i + 1]}, passed, reached))
-          return false;
+                             T3{t2.first, t2.second, layers[i + 1]}, passed,
+                             reached))
+          std::cerr << "cannot route here" << std::endl;
+        return false;
       } else {
-        std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second << ", " << layers[i]
-                  << ") -> (" << t2.first << ", " << t2.second << ", " << layers[i+1] << ")" << std::endl;
+        std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second
+                  << ", " << layers[i] << ") -> (" << t2.first << ", "
+                  << t2.second << ", " << layers[i + 1] << ")" << std::endl;
         _simpleRoute2Pins(T3{t2.first, t2.second, layers[i]},
                           T3{t2.first, t2.second, layers[i + 1]});
       }
@@ -764,11 +763,13 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
           std::vector<T3> passed;
           std::set<T3> reached;
           if (!_simpleRouteDFS(T3{t2.first, t2.second, highest[i]},
-                               T3{t2_.first, t2_.second, highest[y]}, passed, reached))
+                               T3{t2_.first, t2_.second, highest[y]}, passed,
+                               reached))
             return false;
         } else {
-          std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second << ", " << highest[i]
-          << ") -> (" << t2_.first << ", " << t2_.second << ", " << highest[y] << ")" << std::endl;
+          std::cerr << "SimpleRoute2Pins: (" << t2.first << ", " << t2.second
+                    << ", " << highest[i] << ") -> (" << t2_.first << ", "
+                    << t2_.second << ", " << highest[y] << ")" << std::endl;
           _simpleRoute2Pins(T3{t2.first, t2.second, highest[i]},
                             T3{t2_.first, t2_.second, highest[y]});
           std::cerr << "SimpleRoute2Pins succeed" << std::endl;
@@ -795,7 +796,7 @@ bool Net::reroute(cf::Config &config, bool dfs) {
   std::cout << "reroute net " << basics.netName << std::endl;
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
   modifyCells();
-  if (!dfs) space.unsavedNets.insert(basics.netName);
+  space.unsavedNets.insert(basics.netName);
   bool ret = route(config, dfs);
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
   return ret;
@@ -803,14 +804,14 @@ bool Net::reroute(cf::Config &config, bool dfs) {
 
 void Net::writeBack() {
   auto &_routes = space.chip.routes[basics.netName];
-  std::cout << "_route has route number = " << _routes.size()<<std::endl;
+  std::cerr << "_route has route number = " << _routes.size() << std::endl;
   _routes.clear();
   for (auto &edge : edges) {
     _routes.push_back(db::Route(nodes[edge.second.id1], nodes[edge.second.id2],
                                 basics.netName));
   }
-  // std::cout << "_route has route number = " << _routes.size() << std::endl;
-  std::cout << "updated net has route number = " << space.chip.routes[basics.netName].size() <<std::endl;
+  std::cerr << "updated net has route number = "
+            << space.chip.routes[basics.netName].size() << std::endl;
 }
 
 }  // namespace rt

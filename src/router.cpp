@@ -9,13 +9,16 @@ Router::~Router() {}
 void Router::run(cf::Config config) {
   srand(0);
   Move move(space, config);
+  int failure = 0;
   while (space.movedCells.size() < chip.maxCellMove) {
     std::cerr << std::endl << std::endl;
+    if (failure == 10) break;
     int method_selector = rand() % 10;
     if (method_selector < 7) {
       // P(big step) = 7/10
       int cellSelector = rand() % space.movableCells.size();
-      move.bigStep(space.movableCells[cellSelector]);
+      bool success = move.bigStep(space.movableCells[cellSelector]);
+      if (!success) failure++;
     } 
     // else if (method_selector < 9) {
     //   // P(small step) = 2/10
@@ -32,9 +35,10 @@ void Router::run(cf::Config config) {
 
 void Router::print(FILE* f) {
   fprintf(f, "NumMovedCellInst %d\n", (int)space.movedCells.size());
-  for (auto& cell : chip.cellInss) {
-    fprintf(f, "CellInst %s %d %d\n", cell.first.c_str(), cell.second.rowIdx,
-            cell.second.colIdx);
+  for (auto& cellName : space.movedCells) {
+    auto& cell = space.chip.cellInss[cellName];
+    fprintf(f, "CellInst %s %d %d\n", cellName.c_str(), cell.rowIdx,
+            cell.colIdx);
   }
 
   int num_route = 0;
