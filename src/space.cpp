@@ -158,9 +158,11 @@ int Space::_getSupplyOnGrid(const T3 &b) {
 
 void Space::writeBack() {
   for (auto cellName : unsavedCells) {
+    std::cerr << "write cell " << cellName << "back" << std::endl;
     chip.cellInss[cellName] = cellInss[cellName];
   }
   for (auto netName : unsavedNets) {
+    std::cerr << "write net " << netName << "back" << std::endl;
     nets[netName]->writeBack();
   }
   unsavedCells.clear();

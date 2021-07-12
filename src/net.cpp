@@ -334,9 +334,9 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   if (basics.layer == "NoCstr" ||
       a[2] >= space.chip.layerName2Idx[basics.layer]) {
     if (space.chip.layers[a[2]].routingDir == db::H)
-      prepareCandidate(0);
-    else
       prepareCandidate(1);
+    else
+      prepareCandidate(0);
   }
 
   if ((basics.layer != "NoCstr" &&
@@ -451,9 +451,9 @@ void Net::_simpleRoute2Pins(const T3 a, const T3 b, const int lastDir) {
   if (basics.layer == "NoCstr" ||
       a[2] >= space.chip.layerName2Idx[basics.layer]) {
     if (space.chip.layers[a[2]].routingDir == db::H)
-      prepareCandidate(0);
-    else
       prepareCandidate(1);
+    else
+      prepareCandidate(0);
   }
 
   if ((basics.layer != "NoCstr" &&
@@ -568,6 +568,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
 
   // flute
   int degree = pins.size();
+  std::cerr << "pin number = " << degree << std::endl;
   int xs[100 * degree];
   int ys[100 * degree];
   int pt_cnt = 0;
@@ -637,6 +638,7 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
   }
 
   degree = pt_cnt;
+  std::cerr << "pin number = " << degree << std::endl;
   if (degree < 2) {
     std::cerr << "less than 2 pins" << std::endl;
     return true;
