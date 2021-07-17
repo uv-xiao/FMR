@@ -106,7 +106,6 @@ void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
 }
 
 void Space::_moveCell(std::string cellName, T2 to) {
-  movedCells.insert(cellName);
   auto &cell = cellInss[cellName];
   const auto &blkgs = _getBlockagesFromCell(cell);
   for (auto &blkg : blkgs) {

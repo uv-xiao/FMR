@@ -9,22 +9,61 @@ Router::~Router() {}
 void Router::run(cf::Config config) {
   srand(0);
   Move move(space, config);
+  std::cerr << "error here" << std::endl;
   int failure = 0;
-  while (space.movedCells.size() < chip.maxCellMove) {
+  while (true) {
     std::cerr << std::endl << std::endl;
-    if (failure == 10) break;
+    if (failure == 30) break;
     int method_selector = rand() % 10;
     if (method_selector < 7) {
       // P(big step) = 7/10
-      int cellSelector = rand() % space.movableCells.size();
-      bool success = move.bigStep(space.movableCells[cellSelector]);
-      if (!success) failure++;
-    } 
-    // else if (method_selector < 9) {
-    //   // P(small step) = 2/10
-    //   int cellSelector = rand() % space.movableCells.size();
-    //   move.smallStep(space.movableCells[cellSelector]);
-    // } else {
+      int cellSelector;
+      bool success;
+      if (space.movedCells.size() < chip.maxCellMove) {
+        cellSelector = rand() % space.movableCells.size();
+        success = move.bigStep(space.movableCells[cellSelector]);
+      } else {
+        cellSelector = rand() % space.movedCells.size();
+        int idx = 0;
+        for (auto& cellName:space.movedCells) {
+          if (idx == cellSelector) {
+            success = move.bigStep(cellName);
+            break;
+          }
+          idx++;
+        }
+      }
+      if (!success) {
+        failure++;
+        std::cerr << "Fail " << failure << " times!" << std::endl;
+      }
+    } else if (method_selector < 9) {
+      // P(small step) = 2/10
+      int cellSelector;
+      bool success;
+      if (space.movedCells.size() < chip.maxCellMove) {
+        cellSelector = rand() % space.movableCells.size();
+        success = move.smallStep(space.movableCells[cellSelector]);
+      } else {
+        cellSelector = rand() % space.movedCells.size();
+        int idx = 0;
+        for (auto& cellName:space.movedCells) {
+          if (idx == cellSelector) {
+            success = move.smallStep(cellName);
+            break;
+          }
+          idx++;
+        }
+      }
+      if (!success) {
+        failure++;
+        std::cerr << "Fail " << failure << " times!" << std::endl;
+      }
+    }
+    for (auto cell : space.movedCells) {
+      std::cerr << "moved cell" << cell << std::endl;
+    }
+    // else {
     //   // P(net move) = 1/10
     //   int directionSelector = rand() % 2;
     //   move.netMove(directionSelector);

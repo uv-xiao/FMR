@@ -67,6 +67,7 @@ class Space {
   Space(db::Chip &chip);
   stringset unsavedCells;
   stringset unsavedNets;
+  int delta_length = 0;
   void writeBack();
 };
 

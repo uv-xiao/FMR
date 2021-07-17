@@ -92,6 +92,7 @@ void Net::_addEdge2Grid(T3 from, T3 to) {
     for (int i = from[direct] + 1; i < to[direct]; i++) {
       tmp[direct] = i;
       space._addNet2Grid(tmp, basics.netName);
+      std::cerr << "add net 2 grid" << std::endl;
     }
   } else
     assert("must be in x/y/z direction");
@@ -212,25 +213,25 @@ void Net::_optimize() {
 void Net::constructGraph() {
   // from Route construct a graph topo
   // mark Node.isPin
+  if (routes.size() > 0)
+    for (auto route : routes) {
+      T3 cord1{route.sRowIdx, route.sColIdx, route.sLayIdx};
+      T3 cord2{route.eRowIdx, route.eColIdx, route.eLayIdx};
+      int id1{_addNode(cord1)};
+      int id2{_addNode(cord2)};
 
-  for (auto route : routes) {
-    T3 cord1{route.sRowIdx, route.sColIdx, route.sLayIdx};
-    T3 cord2{route.eRowIdx, route.eColIdx, route.eLayIdx};
-    int id1{_addNode(cord1)};
-    int id2{_addNode(cord2)};
+      auto node_ptr1 = nodes.find(id1);
+      auto node_ptr2 = nodes.find(id2);
 
-    auto node_ptr1 = nodes.find(id1);
-    auto node_ptr2 = nodes.find(id2);
+      node_ptr1->second.deg += 1;
+      node_ptr2->second.deg += 1;
 
-    node_ptr1->second.deg += 1;
-    node_ptr2->second.deg += 1;
-
-    int edgeIdx = _addEdge(id1, id2, 1);
-
-    node_ptr1->second.addLink(edgeIdx);
-    node_ptr2->second.addLink(edgeIdx);
-  }
-
+      int edgeIdx = _addEdge(id1, id2, 1);
+      node_ptr1->second.addLink(edgeIdx);
+      node_ptr2->second.addLink(edgeIdx);
+    }
+  else
+    for (auto pin : _getNetPins()) _addNode(pin);
   for (auto pin : _getNetPins()) {
     nodes[occupied[pin]].isPin = 1;
   }
@@ -244,12 +245,15 @@ void Net::cleanAll() {
   edges.clear();
   edgeIdx.clear();
   numEdges = 0;
-
-  std::vector<int> toErase;
+  std::set<T3> loctoErase;
   for (auto node : nodes) {
-    toErase.push_back(node.first);
+    loctoErase.insert(node.second);
   }
-  for (auto i : toErase) _removeNode(i);
+  for (auto loc : loctoErase) {
+    space._removeNetFromGrid(loc, basics.netName);
+    occupied.erase(loc);
+  }
+  nodes.clear();
   numNodes = 0;
 }
 
@@ -264,7 +268,9 @@ double Net::_estCost(const T3 a, const int &d) {
   auto congestionFunc = [](int supply, int demand) {
     return (double)supply / (supply - demand);
   };
-
+  if (a[0] < boundingBox.first.first || a[0] > boundingBox.first.second ||
+      a[1] < boundingBox.second.first || a[1] > boundingBox.second.second)
+    return violationCost;
   if (!_occupy(a)) {
     ret += basics.weight * space.chip.layers[a[2]].powerFactor;
     int demand = space._getDemandOnGrid(a);
@@ -282,9 +288,9 @@ double Net::_estCost(const T3 a, const int &d) {
 
 bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
                           std::set<T3> &reached, const int lastDir) {
-  std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
-            << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
-            << std::get<1>(b) << "," << std::get<2>(b) << ")" << std::endl;
+  // std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
+  //           << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
+  //           << std::get<1>(b) << "," << std::get<2>(b) << ")" << std::endl;
   static const int dx[6] = {1, -1, 0, 0, 0, 0}, dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
 
@@ -384,10 +390,10 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
 
   passed.pop_back();
   reached.erase(a);
-  std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
-            << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
-            << std::get<1>(b) << "," << std::get<2>(b) << ")"
-            << "return false" << std::endl;
+  // std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
+  //           << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
+  //           << std::get<1>(b) << "," << std::get<2>(b) << ")"
+  //           << "return false" << std::endl;
   return false;
 }
 
@@ -568,7 +574,6 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
 
   // flute
   int degree = pins.size();
-  std::cerr << "pin number = " << degree << std::endl;
   int xs[100 * degree];
   int ys[100 * degree];
   int pt_cnt = 0;
@@ -638,15 +643,19 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
   }
 
   degree = pt_cnt;
-  std::cerr << "pin number = " << degree << std::endl;
   if (degree < 2) {
-    std::cerr << "less than 2 pins" << std::endl;
+    int min_layer = space.chip.layerName2Idx[basics.layer];
+    if (pins[0][2] < min_layer) {
+      for (int layer = pins[0][2] + 1; layer <= min_layer; layer++) {
+        T3 node = {pins[0][0], pins[0][1], layer};
+        int n_id = _getNodeIdx(node);
+        int demand = space._getDemandOnGrid(node);
+        int supply = space._getSupplyOnGrid(node);
+        if (demand > supply) return false;
+        _getEdgeIdx(_getNodeIdx(T3{pins[0][0], pins[0][1], layer - 1}), n_id);
+      }
+    }
     return true;
-  }
-
-  std::cerr << "Pins: " << std::endl;
-  for (auto pin : pins) {
-    std::cerr << "\t" << pin[0] << " " << pin[1] << " " << pin[2] << std::endl;
   }
 
   MST mst = Prim(degree, xs, ys);
@@ -795,9 +804,11 @@ bool Net::route(cf::Config &config, bool dfs) {
 }
 
 bool Net::reroute(cf::Config &config, bool dfs) {
+  getBoundingBox();
   std::cout << "reroute net " << basics.netName << std::endl;
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
   modifyCells();
+  rerouted = true;
   space.unsavedNets.insert(basics.netName);
   bool ret = route(config, dfs);
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
@@ -806,14 +817,47 @@ bool Net::reroute(cf::Config &config, bool dfs) {
 
 void Net::writeBack() {
   auto &_routes = space.chip.routes[basics.netName];
-  std::cerr << "_route has route number = " << _routes.size() << std::endl;
+  // std::cerr << "_route has route number = " << _routes.size() << std::endl;
   _routes.clear();
   for (auto &edge : edges) {
     _routes.push_back(db::Route(nodes[edge.second.id1], nodes[edge.second.id2],
                                 basics.netName));
   }
-  std::cerr << "updated net has route number = "
-            << space.chip.routes[basics.netName].size() << std::endl;
+  // std::cerr << "updated net has route number = "
+  //           << space.chip.routes[basics.netName].size() << std::endl;
+}
+
+int Net::getLength() {
+  int len = 0;
+  if (rerouted) {
+    if (edges.size() != 0) len += edges.size() + 1;
+  } else {
+    for (auto &edge : edges) {
+      T3 cord1 = nodes[edge.second.id1];
+      T3 cord2 = nodes[edge.second.id2];
+      len += std::abs(cord1[0] - cord2[0]) + std::abs(cord1[1] - cord2[1]) +
+             std::abs(cord1[2] - cord2[2]);
+    }
+    if (len != 0) len += 1;
+  }
+  return len;
+}
+
+void Net::getBoundingBox() {
+  auto &net = space.chip.nets[basics.netName];
+  int min_x = 10000, min_y = 10000, max_x = 0, max_y = 0;
+  for (auto &pin : net.pins) {
+    auto cellName = pin[0];
+    auto &cell = space.cellInss[cellName];
+
+    min_x = std::min(min_x, cell.rowIdx);
+    max_x = std::max(max_x, cell.rowIdx);
+
+    min_y = std::min(min_y, cell.colIdx);
+    max_y = std::max(max_y, cell.colIdx);
+  }
+
+  boundingBox = std::make_pair(T2{min_x, max_x}, T2{min_y, max_y});
 }
 
 }  // namespace rt
