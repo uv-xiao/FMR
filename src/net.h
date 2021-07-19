@@ -54,6 +54,9 @@ class Net {
   // Edges on 3D space
   std::vector<db::Route> routes;
 
+  // Backup edges
+  std::vector<db::Route> bk_routes;
+
   // map from idx to node
   int numNodes = 0;
   std::map<int, Node> nodes;
@@ -67,8 +70,6 @@ class Net {
 
   // map from <idx, idx> to edgeID
   std::map<std::pair<int, int>, int> edgeIdx;
-
-  bool _occupy(const T3 &b) { return occupied.find(b) != occupied.end(); }
 
   std::pair<T2, T2> boundingBox;
   void getBoundingBox();
@@ -118,6 +119,10 @@ class Net {
 
   bool rerouted = false;
   int getLength();
+  int searchTimes;
+  void recover();
+
+  bool _occupy(const T3 &b) { return occupied.find(b) != occupied.end(); }
 };
 
 }  // namespace rt

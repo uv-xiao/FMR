@@ -130,11 +130,13 @@ void Move::Rollback(std::map<std::string, T2> cell2Move, stringset netNames) {
     space._moveCell(cell.first, cell.second);
   }
   for (auto& netName : netNames) {
-    space.nets[netName]->reroute(conf);
+    space.nets[netName]->recover();
   }
 }
 
 bool Move::bigStep(std::string cellName) {
+  if (cell2nets[cellName].empty())
+    return true;
   std::cerr << "try to move cell " << cellName << "("
             << space.cellInss[cellName].rowIdx << ", "
             << space.cellInss[cellName].colIdx << ") with big step"
@@ -160,6 +162,8 @@ bool Move::bigStep(std::string cellName) {
 }
 
 bool Move::smallStep(std::string cellName) {
+  if (cell2nets[cellName].empty())
+    return true;
   std::cerr << "try to move cell " << cellName << "("
             << space.cellInss[cellName].rowIdx << ", "
             << space.cellInss[cellName].colIdx << ") with small step"

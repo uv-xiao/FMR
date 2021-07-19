@@ -19,6 +19,10 @@ int Net::_getNodeIdx(const T3 &cord) {
     ret = numNodes++;
     nodes.insert({ret, Node(cord[0], cord[1], cord[2], ret)});
     occupied.insert({cord, ret});
+    if (cord[0] == 2 && cord[1] == 6 && cord[2] == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "add node to net %s at (2,6,2)\n", basics.netName.c_str());
+      }
     space._addNet2Grid(cord, basics.netName);
   } else
     ret = occupied[cord];
@@ -73,6 +77,10 @@ void Net::_removeEdgeFromGrid(T3 from, T3 to) {
     T3 tmp = from;
     for (int i = from[direct] + 1; i < to[direct]; i++) {
       tmp[direct] = i;
+      if (tmp[0] == 2 && tmp[1] == 6 && tmp[2] == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "remove edge to net %s at (2,6,2)\n", basics.netName.c_str());
+      }
       space._removeNetFromGrid(tmp, basics.netName);
     }
   } else
@@ -91,6 +99,10 @@ void Net::_addEdge2Grid(T3 from, T3 to) {
     T3 tmp = from;
     for (int i = from[direct] + 1; i < to[direct]; i++) {
       tmp[direct] = i;
+      if (tmp[0] == 2 && tmp[1] == 6 && tmp[2] == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "add edge to net %s at (2,6,2)\n", basics.netName.c_str());
+      }
       space._addNet2Grid(tmp, basics.netName);
       std::cerr << "add net 2 grid" << std::endl;
     }
@@ -100,6 +112,11 @@ void Net::_addEdge2Grid(T3 from, T3 to) {
 
 void Net::_removeNode(int x) {
   assert(nodes.find(x) != nodes.end() && "must remove existing node");
+  T3 cord = nodes[x];
+  if (cord[0] == 2 && cord[1] == 6 && cord[2] == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "remove node to net %s at (2,6,2)\n", basics.netName.c_str());
+      }
   space._removeNetFromGrid(nodes[x], basics.netName);
   occupied.erase(nodes[x]);
   nodes.erase(x);
@@ -250,6 +267,10 @@ void Net::cleanAll() {
     loctoErase.insert(node.second);
   }
   for (auto loc : loctoErase) {
+     if (loc[0] == 2 && loc[1] == 6 && loc[2] == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "remove node to net %s at (2,6,2)\n", basics.netName.c_str());
+      }
     space._removeNetFromGrid(loc, basics.netName);
     occupied.erase(loc);
   }
@@ -291,6 +312,8 @@ bool Net::_simpleRouteDFS(const T3 a, const T3 b, std::vector<T3> &passed,
   // std::cerr << "Route: (" << std::get<0>(a) << "," << std::get<1>(a) << ","
   //           << std::get<2>(a) << ") -> (" << std::get<0>(b) << ","
   //           << std::get<1>(b) << "," << std::get<2>(b) << ")" << std::endl;
+  if (searchTimes == 10000) return false;
+  searchTimes++;
   static const int dx[6] = {1, -1, 0, 0, 0, 0}, dy[6] = {0, 0, 1, -1, 0, 0},
                    dz[6] = {0, 0, 0, 0, 1, -1};
 
@@ -654,6 +677,9 @@ bool Net::_simpleRoute(cf::Config &config, bool dfs) {
         if (demand > supply) return false;
         _getEdgeIdx(_getNodeIdx(T3{pins[0][0], pins[0][1], layer - 1}), n_id);
       }
+    } else {
+      T3 node = {pins[0][0], pins[0][1], min_layer};
+      _getNodeIdx(node);
     }
     return true;
   }
@@ -805,27 +831,25 @@ bool Net::route(cf::Config &config, bool dfs) {
 
 bool Net::reroute(cf::Config &config, bool dfs) {
   getBoundingBox();
+  searchTimes = 0;
   std::cout << "reroute net " << basics.netName << std::endl;
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
+  bk_routes = routes;
   modifyCells();
   rerouted = true;
   space.unsavedNets.insert(basics.netName);
   bool ret = route(config, dfs);
+  if (ret) {
+    routes.clear();
+    for (auto &edge : edges)
+      routes.push_back(db::Route(nodes[edge.second.id1], nodes[edge.second.id2],
+                                 basics.netName));
+  }
   std::cout << basics.netName << " edge number = " << edges.size() << std::endl;
   return ret;
 }
 
-void Net::writeBack() {
-  auto &_routes = space.chip.routes[basics.netName];
-  // std::cerr << "_route has route number = " << _routes.size() << std::endl;
-  _routes.clear();
-  for (auto &edge : edges) {
-    _routes.push_back(db::Route(nodes[edge.second.id1], nodes[edge.second.id2],
-                                basics.netName));
-  }
-  // std::cerr << "updated net has route number = "
-  //           << space.chip.routes[basics.netName].size() << std::endl;
-}
+void Net::writeBack() { space.chip.routes[basics.netName] = routes; }
 
 int Net::getLength() {
   int len = 0;
@@ -858,6 +882,13 @@ void Net::getBoundingBox() {
   }
 
   boundingBox = std::make_pair(T2{min_x, max_x}, T2{min_y, max_y});
+}
+
+void Net::recover() {
+  modifyCells();
+  routes = bk_routes;
+  constructGraph();
+  bk_routes.clear();
 }
 
 }  // namespace rt

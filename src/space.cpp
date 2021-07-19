@@ -7,6 +7,9 @@
 namespace rt {
 
 Space::Space(db::Chip &chip) : chip(chip) {
+  FILE *f = fopen("debug_info", "a");
+  fprintf(f, "init space\n");
+  fprintf(f, "another line\n");
   _prepareCells();
   _prepareNetsFromChip();
 }
@@ -22,6 +25,11 @@ void Space::_prepareCells() {
     for (auto blockage : _getBlockagesFromCell(cell)) {
       auto layerIdx = chip.layerName2Idx[blockage.layer];
       _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
+      if (cell.rowIdx == 2 && cell.colIdx == 6 && layerIdx == 2) {
+        FILE *f = fopen("debug_info", "a");
+        fprintf(f, "cell %s's blockage at (2,6,2), cost %d\n",
+                cell.insName.c_str(), blockage.demand);
+      }
     }
   }
 
@@ -110,6 +118,11 @@ void Space::_moveCell(std::string cellName, T2 to) {
   const auto &blkgs = _getBlockagesFromCell(cell);
   for (auto &blkg : blkgs) {
     int layer = chip.layerName2Idx[blkg.layer];
+    if (cell.rowIdx == 2 && cell.colIdx == 6 && layer == 2) {
+      FILE *f = fopen("debug_info", "a");
+        fprintf(f, "remove cell %s's blockage at (2,6,2), cost %d\n",
+                cell.insName.c_str(), blkg.demand);
+    }
     _addDemandOnGrid(T3{cell.rowIdx, cell.colIdx, layer}, -blkg.demand);
     _addDemandOnGrid(T3{std::get<0>(to), std::get<1>(to), layer}, blkg.demand);
   }
@@ -123,6 +136,10 @@ void Space::_moveCell(std::string cellName, T2 to) {
 
 void Space::_addDemandOnGrid(const T3 &b, int delta) {
   auto ptr = demands.find(b);
+  if (b[0] == 2 && b[1] == 6 && b[2] == 2) {
+    FILE *f = fopen("debug_info", "a");
+    fprintf(f, "demand add %d\n", delta);
+  }
   if (ptr == demands.end()) {
     demands.insert({b, delta});
     return;

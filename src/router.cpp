@@ -70,6 +70,16 @@ void Router::run(cf::Config config) {
     // }
   }
   space.writeBack();
+  for (auto& cell:space.cellInss) {
+    T2 x = cell.second;
+    if (x.first == 2 && x.second == 6) {
+      std::cerr << "cell " << cell.second.insName << " at (2,6)" << std::endl;
+    }
+  }
+  for (auto& net: space.nets) {
+    if (net.second->_occupy(T3{2,6,2}))
+      std::cerr << "net " << net.first << " cross (2,6,2)" << std::endl;
+  }
 }
 
 void Router::print(FILE* f) {
