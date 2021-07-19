@@ -9,11 +9,10 @@ Router::~Router() {}
 void Router::run(cf::Config config) {
   srand(0);
   Move move(space, config);
-  std::cerr << "error here" << std::endl;
   int failure = 0;
   while (true) {
     std::cerr << std::endl << std::endl;
-    if (failure == 30) break;
+    if (failure == 500) break;
     int method_selector = rand() % 10;
     if (method_selector < 7) {
       // P(big step) = 7/10
@@ -72,13 +71,13 @@ void Router::run(cf::Config config) {
   space.writeBack();
   for (auto& cell:space.cellInss) {
     T2 x = cell.second;
-    if (x.first == 2 && x.second == 6) {
-      std::cerr << "cell " << cell.second.insName << " at (2,6)" << std::endl;
+    if (x.first == 8 && x.second == 8) {
+      std::cerr << "cell " << cell.second.insName << " at (8,8)" << std::endl;
     }
   }
   for (auto& net: space.nets) {
-    if (net.second->_occupy(T3{2,6,2}))
-      std::cerr << "net " << net.first << " cross (2,6,2)" << std::endl;
+    if (net.second->_occupy(T3{8,8,3}))
+      std::cerr << "net " << net.first << " cross (8,8,3)" << std::endl;
   }
 }
 

@@ -7,9 +7,6 @@
 namespace rt {
 
 Space::Space(db::Chip &chip) : chip(chip) {
-  FILE *f = fopen("debug_info", "a");
-  fprintf(f, "init space\n");
-  fprintf(f, "another line\n");
   _prepareCells();
   _prepareNetsFromChip();
 }
@@ -25,9 +22,9 @@ void Space::_prepareCells() {
     for (auto blockage : _getBlockagesFromCell(cell)) {
       auto layerIdx = chip.layerName2Idx[blockage.layer];
       _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
-      if (cell.rowIdx == 2 && cell.colIdx == 6 && layerIdx == 2) {
+      if (cell.rowIdx == 8 && cell.colIdx == 8 && layerIdx == 3) {
         FILE *f = fopen("debug_info", "a");
-        fprintf(f, "cell %s's blockage at (2,6,2), cost %d\n",
+        fprintf(f, "cell %s's blockage at (8,8,3), cost %d\n",
                 cell.insName.c_str(), blockage.demand);
       }
     }
@@ -86,6 +83,7 @@ void Space::_prepareNetsFromChip() {
     // construct graph(nodes, edges), and do simplification work
     ptr->second->constructGraph();
   }
+  // exit(-1);
 }
 
 std::vector<db::Blockage> Space::_getBlockagesFromCell(
@@ -96,21 +94,40 @@ std::vector<db::Blockage> Space::_getBlockagesFromCell(
 }
 
 void Space::_addNet2Grid(const T3 &b, const std::string &netName) {
-  _addDemandOnGrid(b, 1);
+  if (b == T3{8, 8, 3}) {
+    if (netName == "N664") {
+      FILE *f = fopen("883", "a");
+      fprintf(f, "N664 before operation demand = %d\n", _getDemandOnGrid(b));
+      fclose(f);
+    }
+  }
   auto ptr2 = passByNets.find(b);
   if (ptr2 == passByNets.end()) {
     passByNets.insert({b, stringset()});
     passByNets[b].insert(netName);
-  } else
+    _addDemandOnGrid(b, 1);
+  } else if (ptr2->second.find(netName) == ptr2->second.end()) {
     ptr2->second.insert(netName);
+    _addDemandOnGrid(b, 1);
+  }
+  if (b == T3{8, 8, 3}) {
+    if (netName == "N664") {
+      FILE *f = fopen("883", "a");
+      fprintf(f, "N664 after operation demand = %d\n", _getDemandOnGrid(b));
+      fclose(f);
+    }
+  }
 }
 
 void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
-  _addDemandOnGrid(b, -1);
   auto ptr2 = passByNets.find(b);
-  assert(ptr2 != passByNets.end() && "Net must be in passByNets");
-  ptr2->second.erase(netName);
-  if (ptr2->second.empty()) passByNets.erase(b);
+  if (ptr2 != passByNets.end()) {
+    ptr2->second.erase(netName);
+    if (ptr2->second.empty()) {
+      passByNets.erase(b);
+    }
+    _addDemandOnGrid(b, -1);
+  }
 }
 
 void Space::_moveCell(std::string cellName, T2 to) {
@@ -118,13 +135,28 @@ void Space::_moveCell(std::string cellName, T2 to) {
   const auto &blkgs = _getBlockagesFromCell(cell);
   for (auto &blkg : blkgs) {
     int layer = chip.layerName2Idx[blkg.layer];
-    if (cell.rowIdx == 2 && cell.colIdx == 6 && layer == 2) {
-      FILE *f = fopen("debug_info", "a");
-        fprintf(f, "remove cell %s's blockage at (2,6,2), cost %d\n",
-                cell.insName.c_str(), blkg.demand);
+    if (cell.rowIdx == 8 && cell.colIdx == 8 && layer == 3) {
+      FILE *f = fopen("883", "a");
+      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
+      fprintf(f, "remove cell %s's blockage at (8,8,3), cost %d\n",
+              cell.insName.c_str(), blkg.demand);
+      fclose(f);
+    }
+    if (to.first == 8 && to.second == 8 && layer == 3) {
+      FILE *f = fopen("883", "a");
+      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
+      fprintf(f, "add cell %s's blockage at (8,8,3), cost %d\n",
+              cell.insName.c_str(), blkg.demand);
+      fclose(f);
     }
     _addDemandOnGrid(T3{cell.rowIdx, cell.colIdx, layer}, -blkg.demand);
     _addDemandOnGrid(T3{std::get<0>(to), std::get<1>(to), layer}, blkg.demand);
+    if (cell.rowIdx == 8 && cell.colIdx == 8 && layer == 3 ||
+        to.first == 8 && to.second == 8 && layer == 3) {
+      FILE *f = fopen("883", "a");
+      fprintf(f, "after op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
+      fclose(f);
+    }
   }
   cell.rowIdx = std::get<0>(to);
   cell.colIdx = std::get<1>(to);

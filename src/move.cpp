@@ -144,19 +144,27 @@ bool Move::bigStep(std::string cellName) {
   // big step's optimal region must be in legal region, no need to check
   T2 originLoc = space.cellInss[cellName];
   T2 bestLoc = computeBestCongestLoc(cellName, optimalRegion(cellName), 1.0);
+  int delta_length = 0;
   if (bestLoc != originLoc) {
     std::map<std::string, T2> rollbackCells({{cellName, originLoc}});
     stringset rollbackNets;
     space._moveCell(cellName, bestLoc);
     for (auto& netName : cell2nets[cellName]) {
       rollbackNets.insert(netName);
+      delta_length += space.nets[netName]->getLength();
       if (!space.nets[netName]->reroute(conf)) {
         Rollback(rollbackCells, rollbackNets);
         return false;
       }
+      delta_length -= space.nets[netName]->getLength();
     }
-    space.movedCells.insert(cellName);
-    return true;
+    if (delta_length >= 2) {
+      space.movedCells.insert(cellName);
+      return true;
+    } else {
+      Rollback(rollbackCells, rollbackNets);
+      return false;
+    }
   }
   return false;
 }
@@ -197,7 +205,7 @@ bool Move::smallStep(std::string cellName) {
       std::cerr << "net " << netName << "length after change"
                 << space.nets[netName]->getLength() << std::endl;
     }
-    if (delta_length >= 0) {
+    if (delta_length >= 2) {
       space.movedCells.insert(cellName);
       return true;
     } else {
