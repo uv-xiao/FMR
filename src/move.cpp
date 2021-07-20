@@ -116,13 +116,23 @@ T2 Move::computeBestCongestLoc(std::string cellName, std::pair<T2, T2> box,
       if (in_voltage_area &&
           ptr->second.gGridIdx.find(loc) == ptr->second.gGridIdx.end())
         continue;
-      double congest = locCongest(T2{x, y}, factor);
-      if (congest > bestCongest) {
+      double congest = locCongest(loc, factor);
+      if (congest > bestCongest && checkMovability(cellName, loc)) {
         bestCongest = congest;
-        Best_loc = T2{x, y};
+        Best_loc = loc;
       }
     }
   return Best_loc;
+}
+
+bool Move::checkMovability(std::string cellName, T2 dst) {
+  auto& cell = space.cellInss[cellName];
+  for (auto& blkg : space.chip.masterCells[cell.mcName].blockages) {
+    T3 loc = {dst.first, dst.second, space.chip.layerName2Idx[blkg.layer]};
+    if (space._getDemandOnGrid(loc) + blkg.demand > space._getSupplyOnGrid(loc))
+      return false;
+  }
+  return true;
 }
 
 void Move::Rollback(std::map<std::string, T2> cell2Move, stringset netNames) {
@@ -135,43 +145,46 @@ void Move::Rollback(std::map<std::string, T2> cell2Move, stringset netNames) {
 }
 
 bool Move::bigStep(std::string cellName) {
-  if (cell2nets[cellName].empty())
-    return true;
+  if (cell2nets[cellName].empty()) return true;
   std::cerr << "try to move cell " << cellName << "("
             << space.cellInss[cellName].rowIdx << ", "
             << space.cellInss[cellName].colIdx << ") with big step"
             << std::endl;
   // big step's optimal region must be in legal region, no need to check
   T2 originLoc = space.cellInss[cellName];
-  T2 bestLoc = computeBestCongestLoc(cellName, optimalRegion(cellName), 1.0);
+  std::pair<T2, T2> optimal = optimalRegion(cellName);
+  for (auto& netName : cell2nets[cellName]) {
+    space.nets[netName]->backup();
+  }
+  space._moveCell(cellName, T2{-1, -1});
+  T2 bestLoc = computeBestCongestLoc(cellName, optimal, 1.0);
   int delta_length = 0;
-  if (bestLoc != originLoc) {
-    std::map<std::string, T2> rollbackCells({{cellName, originLoc}});
-    stringset rollbackNets;
+  bool halfwayFail = false;
+  if (bestLoc != T2{-1, -1}) {
+    std::cerr << "bestLoc = " << bestLoc.first << "," << bestLoc.second << std::endl;;
+    
     space._moveCell(cellName, bestLoc);
     for (auto& netName : cell2nets[cellName]) {
-      rollbackNets.insert(netName);
-      delta_length += space.nets[netName]->getLength();
+      delta_length += space.nets[netName]->getLength("bk_route");
       if (!space.nets[netName]->reroute(conf)) {
-        Rollback(rollbackCells, rollbackNets);
-        return false;
+        halfwayFail = true;
+        break;
       }
-      delta_length -= space.nets[netName]->getLength();
+      delta_length -= space.nets[netName]->getLength("route");
     }
-    if (delta_length >= 2) {
+    if (!halfwayFail && delta_length >= 2) {
       space.movedCells.insert(cellName);
+      if (cellName == "C1614")
+        exit(-1);
       return true;
-    } else {
-      Rollback(rollbackCells, rollbackNets);
-      return false;
     }
   }
+  Rollback({{cellName, originLoc}}, cell2nets[cellName]);
   return false;
 }
 
 bool Move::smallStep(std::string cellName) {
-  if (cell2nets[cellName].empty())
-    return true;
+  if (cell2nets[cellName].empty()) return true;
   std::cerr << "try to move cell " << cellName << "("
             << space.cellInss[cellName].rowIdx << ", "
             << space.cellInss[cellName].colIdx << ") with small step"
@@ -182,37 +195,33 @@ bool Move::smallStep(std::string cellName) {
   int ux = std::min(cell.rowIdx + 1, space.chip.gGridBoundaryIdx[2]);
   int ly = std::max(cell.colIdx - 1, space.chip.gGridBoundaryIdx[1]);
   int uy = std::min(cell.colIdx + 1, space.chip.gGridBoundaryIdx[3]);
+  T2 originLoc = space.cellInss[cellName];
+  for (auto& netName : cell2nets[cellName]) {
+    space.nets[netName]->backup();
+  }
+  space._moveCell(cellName, T2{-1, -1});
   T2 bestLoc =
       computeBestCongestLoc(cellName, std::make_pair(T2{lx, ux}, T2{ly, uy}));
-  T2 originLoc = space.cellInss[cellName];
   int delta_length = 0;
-  if (bestLoc != originLoc) {
-    std::map<std::string, T2> rollbackCells({{cellName, originLoc}});
-    stringset rollbackNets;
-
+  bool halfwayFail = false;
+  if (bestLoc != T2{-1, -1}) {
     space._moveCell(cellName, bestLoc);
     for (auto& netName : cell2nets[cellName]) {
-      rollbackNets.insert(netName);
-      delta_length += space.nets[netName]->getLength();
-      std::cerr << "net " << netName
-                << "orginal length:" << space.nets[netName]->getLength()
-                << std::endl;
+      delta_length += space.nets[netName]->getLength("bk_route");
       if (!space.nets[netName]->reroute(conf)) {
-        Rollback(rollbackCells, rollbackNets);
-        return false;
+        halfwayFail = true;
+        break;
       }
-      delta_length -= space.nets[netName]->getLength();
-      std::cerr << "net " << netName << "length after change"
-                << space.nets[netName]->getLength() << std::endl;
+      delta_length -= space.nets[netName]->getLength("route");
     }
-    if (delta_length >= 2) {
+    if (!halfwayFail && delta_length >= 2) {
       space.movedCells.insert(cellName);
+      if (cellName == "C1614")
+        exit(-1);
       return true;
-    } else {
-      Rollback(rollbackCells, rollbackNets);
-      return false;
     }
   }
+  Rollback({{cellName, originLoc}}, cell2nets[cellName]);
   return false;
 }
 void Move::netMove(int direction) {

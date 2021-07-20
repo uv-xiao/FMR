@@ -118,9 +118,10 @@ class Net {
   void writeBack();
 
   bool rerouted = false;
-  int getLength();
+  int getLength(std::string obj);
   int searchTimes;
   void recover();
+  void backup();
 
   bool _occupy(const T3 &b) { return occupied.find(b) != occupied.end(); }
 };

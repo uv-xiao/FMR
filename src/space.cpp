@@ -22,11 +22,6 @@ void Space::_prepareCells() {
     for (auto blockage : _getBlockagesFromCell(cell)) {
       auto layerIdx = chip.layerName2Idx[blockage.layer];
       _addDemandOnGrid({cell.rowIdx, cell.colIdx, layerIdx}, blockage.demand);
-      if (cell.rowIdx == 8 && cell.colIdx == 8 && layerIdx == 3) {
-        FILE *f = fopen("debug_info", "a");
-        fprintf(f, "cell %s's blockage at (8,8,3), cost %d\n",
-                cell.insName.c_str(), blockage.demand);
-      }
     }
   }
 
@@ -94,10 +89,10 @@ std::vector<db::Blockage> Space::_getBlockagesFromCell(
 }
 
 void Space::_addNet2Grid(const T3 &b, const std::string &netName) {
-  if (b == T3{8, 8, 3}) {
-    if (netName == "N664") {
-      FILE *f = fopen("883", "a");
-      fprintf(f, "N664 before operation demand = %d\n", _getDemandOnGrid(b));
+  if (b == T3{27, 27, 3}) {
+    if (netName == "N130") {
+      FILE *f = fopen("27273", "a");
+      fprintf(f, "N130 before operation demand = %d\n", _getDemandOnGrid(b));
       fclose(f);
     }
   }
@@ -110,10 +105,10 @@ void Space::_addNet2Grid(const T3 &b, const std::string &netName) {
     ptr2->second.insert(netName);
     _addDemandOnGrid(b, 1);
   }
-  if (b == T3{8, 8, 3}) {
-    if (netName == "N664") {
-      FILE *f = fopen("883", "a");
-      fprintf(f, "N664 after operation demand = %d\n", _getDemandOnGrid(b));
+  if (b == T3{27, 27, 3}) {
+    if (netName == "N130") {
+      FILE *f = fopen("27273", "a");
+      fprintf(f, "N130 after operation demand = %d\n", _getDemandOnGrid(b));
       fclose(f);
     }
   }
@@ -122,11 +117,13 @@ void Space::_addNet2Grid(const T3 &b, const std::string &netName) {
 void Space::_removeNetFromGrid(const T3 &b, const std::string &netName) {
   auto ptr2 = passByNets.find(b);
   if (ptr2 != passByNets.end()) {
-    ptr2->second.erase(netName);
+    if (ptr2->second.find(netName) != ptr2->second.end()) {
+      ptr2->second.erase(netName);
+      _addDemandOnGrid(b, -1);
+    }
     if (ptr2->second.empty()) {
       passByNets.erase(b);
     }
-    _addDemandOnGrid(b, -1);
   }
 }
 
@@ -135,26 +132,26 @@ void Space::_moveCell(std::string cellName, T2 to) {
   const auto &blkgs = _getBlockagesFromCell(cell);
   for (auto &blkg : blkgs) {
     int layer = chip.layerName2Idx[blkg.layer];
-    if (cell.rowIdx == 8 && cell.colIdx == 8 && layer == 3) {
-      FILE *f = fopen("883", "a");
-      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
-      fprintf(f, "remove cell %s's blockage at (8,8,3), cost %d\n",
+    if (cell.rowIdx == 17 && cell.colIdx == 84 && layer == 7) {
+      FILE *f = fopen("debug", "a");
+      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{17,84, 7}));
+      fprintf(f, "remove cell %s's blockage at (17,84,7), cost %d\n",
               cell.insName.c_str(), blkg.demand);
       fclose(f);
     }
-    if (to.first == 8 && to.second == 8 && layer == 3) {
-      FILE *f = fopen("883", "a");
-      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
-      fprintf(f, "add cell %s's blockage at (8,8,3), cost %d\n",
+    if (to.first == 17 && to.second == 84 && layer == 7) {
+      FILE *f = fopen("debug", "a");
+      fprintf(f, "before op, demand = %d\n", _getDemandOnGrid(T3{17,84,7}));
+      fprintf(f, "add cell %s's blockage at (17,84,7), cost %d\n",
               cell.insName.c_str(), blkg.demand);
       fclose(f);
     }
     _addDemandOnGrid(T3{cell.rowIdx, cell.colIdx, layer}, -blkg.demand);
     _addDemandOnGrid(T3{std::get<0>(to), std::get<1>(to), layer}, blkg.demand);
-    if (cell.rowIdx == 8 && cell.colIdx == 8 && layer == 3 ||
-        to.first == 8 && to.second == 8 && layer == 3) {
-      FILE *f = fopen("883", "a");
-      fprintf(f, "after op, demand = %d\n", _getDemandOnGrid(T3{8, 8, 3}));
+    if (cell.rowIdx == 17 && cell.colIdx == 84 && layer == 7 ||
+        to.first == 17 && to.second == 84 && layer == 7) {
+      FILE *f = fopen("debug", "a");
+      fprintf(f, "after op, demand = %d\n", _getDemandOnGrid(T3{17,84,7}));
       fclose(f);
     }
   }
@@ -168,10 +165,6 @@ void Space::_moveCell(std::string cellName, T2 to) {
 
 void Space::_addDemandOnGrid(const T3 &b, int delta) {
   auto ptr = demands.find(b);
-  if (b[0] == 2 && b[1] == 6 && b[2] == 2) {
-    FILE *f = fopen("debug_info", "a");
-    fprintf(f, "demand add %d\n", delta);
-  }
   if (ptr == demands.end()) {
     demands.insert({b, delta});
     return;

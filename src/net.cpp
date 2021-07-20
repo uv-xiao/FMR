@@ -19,15 +19,16 @@ int Net::_getNodeIdx(const T3 &cord) {
     ret = numNodes++;
     nodes.insert({ret, Node(cord[0], cord[1], cord[2], ret)});
     occupied.insert({cord, ret});
-    if (cord == T3{8, 8, 3}) {
-      FILE *f = fopen("883", "a");
+    if (cord == T3{17, 84, 7}) {
+      FILE *f = fopen("debug", "a");
       fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(cord));
-      fprintf(f, "net %s add node demand on (8,8,3)\n", basics.netName.c_str());
+      fprintf(f, "net %s add node demand on (17,84,7)\n",
+              basics.netName.c_str());
       fclose(f);
     }
-      space._addNet2Grid(cord, basics.netName);
-    if (cord == T3{8, 8, 3}) {
-      FILE *f = fopen("883", "a");
+    space._addNet2Grid(cord, basics.netName);
+    if (cord == T3{17, 84, 7}) {
+      FILE *f = fopen("debug", "a");
       fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(cord));
       fclose(f);
     }
@@ -88,15 +89,16 @@ void Net::_removeEdgeFromGrid(T3 from, T3 to) {
       tmp[direct] = i;
       std::cerr << "remove edge node" << tmp[0] << tmp[1] << tmp[2]
                 << std::endl;
-      if (tmp == T3{8, 8, 3}) {
-        FILE *f = fopen("883", "a");
+      if (tmp == T3{17,84,7}) {
+        FILE *f = fopen("debug", "a");
         fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(tmp));
-        fprintf(f, "net %s remove edge demand on (8,8,3)\n", basics.netName.c_str());
+        fprintf(f, "net %s remove edge demand on (17,84,7)\n",
+                basics.netName.c_str());
         fclose(f);
       }
-        space._removeNetFromGrid(tmp, basics.netName);
-      if (tmp == T3{8, 8, 3}) {
-        FILE *f = fopen("883", "a");
+      space._removeNetFromGrid(tmp, basics.netName);
+      if (tmp == T3{17,84,7}) {
+        FILE *f = fopen("debug", "a");
         fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(tmp));
         fclose(f);
       }
@@ -117,15 +119,16 @@ void Net::_addEdge2Grid(T3 from, T3 to) {
     T3 tmp = from;
     for (int i = from[direct] + 1; i < to[direct]; i++) {
       tmp[direct] = i;
-      if (tmp == T3{8, 8, 3}) {
-        FILE *f = fopen("883", "a");
+      if (tmp == T3{17,84,7}) {
+        FILE *f = fopen("debug", "a");
         fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(tmp));
-        fprintf(f, "net %s add edge demand on (8,8,3)\n", basics.netName.c_str());
+        fprintf(f, "net %s add edge demand on (17,84,7)\n",
+                basics.netName.c_str());
         fclose(f);
       }
-        space._addNet2Grid(tmp, basics.netName);
-      if (tmp == T3{8, 8, 3}) {
-        FILE *f = fopen("883", "a");
+      space._addNet2Grid(tmp, basics.netName);
+      if (tmp == T3{17,84,7}) {
+        FILE *f = fopen("debug", "a");
         fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(tmp));
         fclose(f);
       }
@@ -137,15 +140,16 @@ void Net::_addEdge2Grid(T3 from, T3 to) {
 void Net::_removeNode(int x) {
   assert(nodes.find(x) != nodes.end() && "must remove existing node");
   T3 cord = nodes[x];
-  if (cord == T3{8, 8, 3}) {
-    FILE *f = fopen("883", "a");
+  if (cord == T3{17,84,7}) {
+    FILE *f = fopen("debug", "a");
     fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(cord));
-    fprintf(f, "net %s remove node demand on (8,8,3)\n", basics.netName.c_str());
+    fprintf(f, "net %s remove node demand on (17,84,7)\n",
+            basics.netName.c_str());
     fclose(f);
   }
-    space._removeNetFromGrid(nodes[x], basics.netName);
-  if (cord == T3{8, 8, 3}) {
-    FILE *f = fopen("883", "a");
+  space._removeNetFromGrid(nodes[x], basics.netName);
+  if (cord == T3{17,84,7}) {
+    FILE *f = fopen("debug", "a");
     fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(cord));
     fclose(f);
   }
@@ -299,15 +303,19 @@ void Net::cleanAll() {
     loctoErase.insert(node.second);
   }
   for (auto loc : loctoErase) {
-    if (loc == T3{8,8,3}) {
-        FILE *f = fopen("883", "a");
-        fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(loc));
-        fprintf(f, "net %s remove node demand on (8,8,3)\n", basics.netName.c_str());
-        space._removeNetFromGrid(loc, basics.netName);
-        fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(loc));
-        fclose(f);
-    } else
-    space._removeNetFromGrid(loc, basics.netName);
+    if (loc == T3{17,84,7}) {
+      FILE *f = fopen("debug", "a");
+      fprintf(f, "before op, demand = %d\n", space._getDemandOnGrid(loc));
+      fprintf(f, "net %s remove node demand on (17,84,7)\n",
+              basics.netName.c_str());
+      fclose(f);
+    }
+      space._removeNetFromGrid(loc, basics.netName);
+    if (loc == T3{17,84,7}) {
+      FILE *f = fopen("debug", "a");
+      fprintf(f, "after op, demand = %d\n", space._getDemandOnGrid(loc));
+      fclose(f);
+    }
     occupied.erase(loc);
   }
   nodes.clear();
@@ -332,7 +340,7 @@ double Net::_estCost(const T3 a, const int &d) {
     ret += basics.weight * space.chip.layers[a[2]].powerFactor;
     int demand = space._getDemandOnGrid(a);
     int supply = space._getSupplyOnGrid(a);
-    if (demand == supply)
+    if (demand >= supply)
       ret += violationCost * 1.5;
     else {
       ret += congestionFunc(supply, demand);
@@ -864,21 +872,19 @@ bool Net::route(cf::Config &config, bool dfs) {
 }
 
 bool Net::reroute(cf::Config &config, bool dfs) {
-  if (basics.netName == "N664") {
-    FILE *f = fopen("883", "a");
-    fprintf(f, "here clean N664\n");
+  if (basics.netName == "N130") {
+    FILE *f = fopen("27273", "a");
+    fprintf(f, "here clean N130\n");
     fclose(f);
   }
   getBoundingBox();
   searchTimes = 0;
   std::cerr << "reroute net " << basics.netName << std::endl;
-  bk_routes = routes;
-  modifyCells();
   rerouted = true;
   space.unsavedNets.insert(basics.netName);
-  if (basics.netName == "N664") {
-    FILE *f = fopen("883", "a");
-    fprintf(f, "here reroute N664\n");
+  if (basics.netName == "N130") {
+    FILE *f = fopen("27273", "a");
+    fprintf(f, "here reroute N130\n");
     fclose(f);
   }
   bool ret = route(config, dfs);
@@ -887,30 +893,48 @@ bool Net::reroute(cf::Config &config, bool dfs) {
     for (auto &edge : edges)
       routes.push_back(db::Route(nodes[edge.second.id1], nodes[edge.second.id2],
                                  basics.netName));
-    if (basics.netName == "N664") {
-    FILE *f = fopen("883", "a");
-    fprintf(f, "N664 reroute succeed\n");
-    fclose(f);
-  }
+    if (basics.netName == "N130") {
+      FILE *f = fopen("27273", "a");
+      fprintf(f, "N130 reroute succeed\n");
+      fclose(f);
+    }
   }
   return ret;
 }
 
+void Net::backup() {
+  bk_routes = routes;
+  modifyCells();
+}
+
 void Net::writeBack() { space.chip.routes[basics.netName] = routes; }
 
-int Net::getLength() {
+int Net::getLength(std::string obj) {
   int len = 0;
-  if (rerouted) {
-    if (edges.size() != 0) len += edges.size() + 1;
-  } else {
-    for (auto &edge : edges) {
-      T3 cord1 = nodes[edge.second.id1];
-      T3 cord2 = nodes[edge.second.id2];
-      len += std::abs(cord1[0] - cord2[0]) + std::abs(cord1[1] - cord2[1]) +
-             std::abs(cord1[2] - cord2[2]);
+  if (obj == "route") {
+    if (rerouted) {
+      if (routes.size() != 0) len += routes.size() + 1;
+    } else {
+      for (auto &route : routes) {
+        len += std::abs(route.sRowIdx - route.eRowIdx) +
+               std::abs(route.sColIdx - route.eColIdx) +
+               std::abs(route.sLayIdx - route.eLayIdx);
+      }
+      if (len != 0) len += 1;
     }
-    if (len != 0) len += 1;
+  } else if (obj == "bk_route") {
+    if (rerouted) {
+      if (routes.size() != 0) len += routes.size() + 1;
+    } else {
+      for (auto &route : bk_routes) {
+        len += std::abs(route.sRowIdx - route.eRowIdx) +
+               std::abs(route.sColIdx - route.eColIdx) +
+               std::abs(route.sLayIdx - route.eLayIdx);
+      }
+      if (len != 0) len += 1;
+    }
   }
+
   return len;
 }
 

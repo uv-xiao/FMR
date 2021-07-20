@@ -54,6 +54,8 @@ class Move {
   void netMove(int direction);
 
   void Rollback(std::map<std::string, T2> cell2Move, stringset netNames);
+
+  bool checkMovability(std::string cellName, T2 dst);
 };
 
 }  // namespace rt

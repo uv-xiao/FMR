@@ -71,13 +71,13 @@ void Router::run(cf::Config config) {
   space.writeBack();
   for (auto& cell:space.cellInss) {
     T2 x = cell.second;
-    if (x.first == 8 && x.second == 8) {
-      std::cerr << "cell " << cell.second.insName << " at (8,8)" << std::endl;
+    if (x.first == 27 && x.second == 27) {
+      std::cerr << "cell " << cell.second.insName << " at (27,27)" << std::endl;
     }
   }
   for (auto& net: space.nets) {
-    if (net.second->_occupy(T3{8,8,3}))
-      std::cerr << "net " << net.first << " cross (8,8,3)" << std::endl;
+    if (net.second->_occupy(T3{27,27,3}))
+      std::cerr << "net " << net.first << " cross (27,27,3)" << std::endl;
   }
 }
 
