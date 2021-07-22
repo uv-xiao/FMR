@@ -1,22 +1,14 @@
 # FMR
 
-## TODO
-* Legalization
-* experiment
+## Description
+We develop a global route routing engine to honor all the given routing constraints. And, this global route routing engine can move the cells from one gGrid to another if all the given routing constraints can still be satisfied while the wire length can be further reduced through the cell movements
 
+## Run
+```
+make clean & make lib & make all
+./bin/a.out casex.txt output.txt
+./evaluator/evaluator casex.txt output.txt
+```
 
-## Done
-
-* parser
-* router
-* cell movement
-
-## Ideas
-
-* Net Optimizer
-  * Graph --[MST]-> Tree --[Cut-leave]-> Core Tree
-* Ripup and Reroute
-  * from center to edge, k \times A*
-* Cell Movement
-  1. choose multiple pins, which are bad according to "optimal region"
-  2. use net to choose "distant pins"
+## Link
+[Official website](http://iccad-contest.org/2021/Problems.html)
